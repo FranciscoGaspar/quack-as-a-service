@@ -1,0 +1,22 @@
+services:
+  db:
+    image: "postgres:15-alpine"
+    container_name: quack-db
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=quack
+      - POSTGRES_PASSWORD=quack
+      - POSTGRES_DB=quack
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - quack-network
+
+volumes:
+  postgres_data:
+
+networks:
+  quack-network:
+    driver: bridge
