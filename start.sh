@@ -18,6 +18,9 @@ if [ ! -d "venv" ]; then
     echo "✅ Backend environment ready!"
 else
     echo "✅ Backend environment already exists!"
+    source venv/bin/activate
+    pip install -r requirements.txt  # Update dependencies
+    echo "✅ Dependencies updated!"
 fi
 
 # Step 3: Create .env if needed
@@ -51,14 +54,13 @@ entries = PersonalEntryService.get_all()
 print(f'✅ Database test: {len(users)} users, {len(entries)} entries')
 "
 
+# Step 6: Start the API
+echo "🚀 Starting FastAPI server..."
+echo "API will be available at: http://localhost:8000"
+echo "API Documentation: http://localhost:8000/docs"
 echo ""
-echo "🎉 Project is ready!"
+echo "Press Ctrl+C to stop the API server"
 echo "==================="
-echo ""
-echo "Next steps:"
-echo "1. Activate environment: cd backend && source venv/bin/activate"
-echo "2. Try the examples:     python example_usage.py"
-echo "3. Use in your code:     from database import UserService, PersonalEntryService"
-echo ""
-echo "Database: http://localhost:5432"
-echo "User: quack, Password: quack, Database: quack"
+
+# Start the API server (this will run in foreground)
+python main.py
