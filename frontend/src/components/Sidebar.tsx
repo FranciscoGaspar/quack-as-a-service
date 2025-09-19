@@ -1,7 +1,12 @@
 "use client";
 
 import { ROUTES } from "@/constants/routes";
-import { LayoutDashboard, type LucideIcon, Origami } from "lucide-react";
+import {
+  DoorOpenIcon,
+  LayoutDashboard,
+  type LucideIcon,
+  Origami,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -36,7 +41,13 @@ const groupRoutes: GroupedRoute[] = [
   {
     key: "mainMenu",
     label: "Main Menu",
-    items: [],
+    items: [
+      {
+        icon: DoorOpenIcon,
+        title: "Factory Entries",
+        url: ROUTES.factoryEntries,
+      },
+    ],
   },
 ];
 

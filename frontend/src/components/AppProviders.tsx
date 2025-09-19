@@ -1,5 +1,8 @@
 "use client";
 
+import { getQueryClient } from "@/lib/getQueryClient";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import type { ReactNode } from "react";
 import { SidebarProvider } from "./ui/sidebar";
 
@@ -8,5 +11,12 @@ type AppProvidersProps = {
 };
 
 export const AppProviders = ({ children }: AppProvidersProps) => {
-  return <SidebarProvider>{children}</SidebarProvider>;
+  return (
+    <QueryClientProvider client={getQueryClient()}>
+      <SidebarProvider>
+        {children}
+        <ReactQueryDevtools />
+      </SidebarProvider>
+    </QueryClientProvider>
+  );
 };
