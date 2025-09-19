@@ -13,7 +13,7 @@ A PostgreSQL database layer for tracking personal security equipment compliance 
 ### Database Models
 
 - **User**: People using the system (ID, name, timestamps)
-- **PersonalEntry**: Equipment tracking when entering rooms (ID, user_id, timestamps, image_url, equipment JSON)
+- **PersonalEntry**: Equipment tracking when entering rooms (ID, user_id, room_name, timestamps, image_url, equipment JSON)
 
 ### Equipment Tracking
 
@@ -31,26 +31,36 @@ The `equipment` field in `PersonalEntry` is a JSON object tracking:
 ### Prerequisites
 
 - Python 3.8+
-- PostgreSQL 12+
-- pip
+- Docker & Docker Compose
+- Git
 
-### Setup
+### Super Simple Setup
 
-1. **Run the automated setup script:**
+1. **One command start (from project root):**
+   ```bash
+   ./start.sh
+   ```
+   This does everything: starts database, sets up environment, initializes DB!
+
+### Manual Setup
+
+1. **Start PostgreSQL with Docker:**
+
+   ```bash
+   docker-compose up -d db
+   ```
+
+2. **Set up backend:**
 
    ```bash
    cd backend
    ./setup_env.sh
    ```
 
-2. **Configure your database:**
-
-   - Edit `.env` file with your PostgreSQL credentials
-   - Example: `DATABASE_URL=postgresql://username:password@localhost:5432/quack_service`
-
-3. **Initialize database:**
+3. **Test it works:**
    ```bash
-   python init_db.py
+   source venv/bin/activate
+   python example_usage.py
    ```
 
 ### Manual Setup (Alternative)
@@ -77,43 +87,44 @@ The `equipment` field in `PersonalEntry` is a JSON object tracking:
 
 ## 🗄️ Database Configuration
 
-### PostgreSQL Setup
+### Docker Compose Setup (Recommended)
 
-1. **Install PostgreSQL:**
+The project includes a `docker-compose.yml` that sets up PostgreSQL automatically:
+
+```bash
+# Start database
+docker-compose up -d db
+
+# Check it's running
+docker-compose ps
+
+# Stop database
+docker-compose down
+```
+
+**Database credentials:**
+
+- Host: `localhost:5432`
+- Database: `quack`
+- Username: `quack`
+- Password: `quack`
+
+### Manual PostgreSQL Setup (Alternative)
+
+If you prefer local PostgreSQL:
+
+1. **Install and create database:**
 
    ```bash
    # macOS
    brew install postgresql
    brew services start postgresql
-
-   # Ubuntu
-   sudo apt update
-   sudo apt install postgresql postgresql-contrib
-   sudo systemctl start postgresql
+   createdb quack
    ```
 
-2. **Create database and user:**
-
-   ```sql
-   -- Connect to PostgreSQL
-   psql -U postgres
-
-   -- Create database
-   CREATE DATABASE quack_service;
-
-   -- Create user
-   CREATE USER quackuser WITH PASSWORD 'quackpass';
-
-   -- Grant permissions
-   GRANT ALL PRIVILEGES ON DATABASE quack_service TO quackuser;
-
-   -- Exit
-   \q
-   ```
-
-3. **Update .env file:**
+2. **Update .env file:**
    ```bash
-   DATABASE_URL=postgresql://quackuser:quackpass@localhost:5432/quack_service
+   DATABASE_URL=postgresql://quack:quack@localhost:5432/quack
    ```
 
 ## 🔧 Configuration
@@ -121,18 +132,27 @@ The `equipment` field in `PersonalEntry` is a JSON object tracking:
 ### Environment Variables (.env)
 
 ```bash
-# Database
-DATABASE_URL=postgresql://username:password@localhost:5432/quack_service
+# Database (matches Docker Compose)
+DATABASE_URL=postgresql://quack:quack@localhost:5432/quack
 DB_POOL_SIZE=10
 DB_MAX_OVERFLOW=20
+DB_POOL_RECYCLE=3600
 
 # Object Detection
+MODEL_ID=IDEA-Research/grounding-dino-base
 DETECTION_THRESHOLD=0.3
 TEXT_QUERIES=a mask. a glove. a hairnet.
 
 # File Storage
 UPLOAD_FOLDER=uploads
 DETECTION_OUTPUT_FOLDER=detected_frames
+MAX_CONTENT_LENGTH=16777216
+
+# Camera Configuration
+DEFAULT_CAMERA_INDEX=0
+CAMERA_WIDTH=1280
+CAMERA_HEIGHT=720
+CAMERA_FPS=30
 ```
 
 ## 💻 Usage Examples
@@ -214,37 +234,26 @@ CREATE TABLE personal_entries (
 );
 ```
 
-## 🛠️ Service Classes
+## 🛠️ Service Classes (Basic CRUD)
 
 ### UserService
 
-- `create_user(name)` - Create new user
-- `get_user_by_id(user_id)` - Get user by ID
-- `get_all_users()` - Get all users
-- `update_user(user_id, name)` - Update user
-- `delete_user(user_id)` - Delete user
+- `create(name)` - Create new user
+- `get_by_id(user_id)` - Get user by ID
+- `get_all()` - Get all users
+- `update(user_id, name)` - Update user
+- `delete(user_id)` - Delete user
 
 ### PersonalEntryService
 
-- `create_entry(user_id, image_url, equipment)` - Create entry
-- `get_entry_by_id(entry_id)` - Get entry by ID
-- `get_user_entries(user_id)` - Get user's entries
-- `get_recent_entries(limit)` - Get recent entries
-- `update_equipment(entry_id, **equipment)` - Update equipment
-- `get_compliant_entries()` - Get compliant entries
-- `get_non_compliant_entries()` - Get non-compliant entries
-
-### AnalyticsService
-
-- `get_database_stats()` - Overall database statistics
-- `get_equipment_statistics()` - Equipment usage stats
-- `get_user_statistics(user_id)` - User-specific stats
-- `get_daily_statistics(days)` - Daily analytics
-
-### DetectionIntegrationService
-
-- `process_detection_results(user_id, image_url, results)` - Process ML results
-- `batch_process_detections(detections)` - Process multiple detections
+- `create(user_id, room_name, equipment, image_url)` - Create entry
+- `get_by_id(entry_id)` - Get entry by ID
+- `get_all(limit)` - Get all entries
+- `get_by_user(user_id, limit)` - Get user's entries
+- `get_by_room(room_name, limit)` - Get room's entries
+- `update(entry_id, room_name, equipment, image_url)` - Update entry
+- `update_equipment(entry_id, **equipment)` - Update specific equipment
+- `delete(entry_id)` - Delete entry
 
 ## 🚨 Troubleshooting
 
@@ -252,9 +261,9 @@ CREATE TABLE personal_entries (
 
 1. **Database Connection Failed**
 
-   - Check PostgreSQL is running: `brew services start postgresql`
-   - Verify DATABASE_URL in .env file
-   - Test connection: `psql -d quack_service -U your_username`
+   - Check PostgreSQL is running: `docker-compose ps`
+   - Verify DATABASE_URL in .env file: `postgresql://quack:quack@localhost:5432/quack`
+   - Test connection: `docker exec -it quack-db psql -U quack -d quack`
 
 2. **Import Errors**
 

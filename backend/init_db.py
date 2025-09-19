@@ -72,6 +72,10 @@ def initialize_database():
         print("  - Connect to your PostgreSQL database to view the data")
         print("\nDatabase connection URL:")
         print(f"  {os.getenv('DATABASE_URL', 'Not configured')}")
+        print("\nTo use with Docker Compose:")
+        print("  docker-compose up -d db")
+        print("  # Wait for PostgreSQL to start, then run:")
+        print("  python init_db.py")
         
     except Exception as e:
         print(f"❌ Database initialization failed: {str(e)}")

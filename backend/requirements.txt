@@ -1,16 +1,13 @@
-# Core ML Dependencies
+# Core Dependencies
 requests>=2.25.0
-torch>=1.9.0
-torchvision>=0.10.0
 Pillow>=8.0.0
-transformers>=4.20.0
 matplotlib>=3.5.0
 opencv-python>=4.5.0
 numpy>=1.21.0
 
 # Database and ORM
 SQLAlchemy>=2.0.0
-psycopg2-binary>=2.9.0  # PostgreSQL driver
+psycopg2-binary>=2.9.0
 
 # Environment and Configuration
 python-dotenv>=1.0.0
