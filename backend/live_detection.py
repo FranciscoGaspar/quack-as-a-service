@@ -242,7 +242,7 @@ class LiveObjectDetector:
         
         return boxes, weights
     
-    def _remove_duplicate_detections(self, boxes, weights, overlap_threshold=0.3):
+    def _remove_duplicate_detections(self, boxes, weights, overlap_threshold=0.32):
         """Remove duplicate detections based on overlap"""
         if len(boxes) == 0:
             return [], []
@@ -391,7 +391,7 @@ class LiveObjectDetector:
         # Draw semi-transparent background
         overlay = frame.copy()
         cv2.rectangle(overlay, (10, 10), (300, 150), (0, 0, 0), -1)
-        cv2.addWeighted(overlay, 0.7, frame, 0.3, 0, frame)
+        cv2.addWeighted(overlay, 0.7, frame, 0.32, 0, frame)
         
         # Draw status text
         for i, line in enumerate(status_lines):
@@ -660,7 +660,7 @@ class LiveObjectDetector:
                     print("🔄 Statistics reset!")
                 elif key == ord('t'):
                     # Toggle detection threshold
-                    self.person_detection_threshold = 0.3 if self.person_detection_threshold > 0.5 else 0.7
+                    self.person_detection_threshold = 0.32 if self.person_detection_threshold > 0.5 else 0.7
                     print(f"🎚️  Person detection threshold: {self.person_detection_threshold}")
                 elif key == ord('d'):
                     # Toggle debug mode
