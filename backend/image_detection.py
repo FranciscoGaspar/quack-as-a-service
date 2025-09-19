@@ -424,7 +424,6 @@ def main():
 
     text_queries = ". ".join(required_items) + "."
     
-    print(text_queries)
     for i, image_url in enumerate(image_urls, 1):
         print(f"\n{'='*60}")
         print(f"ANALYZING IMAGE {i}: {image_url}")
