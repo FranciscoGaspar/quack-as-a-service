@@ -94,25 +94,31 @@ def visualize_detections(image, results, text_queries):
 
 def main():
     """Main function to run the original image detection script"""
-    image_url = "https://www.news-medical.net/image-handler/picture/2021/11/shutterstock_1118088002.jpg"
-    image = Image.open(requests.get(image_url, stream=True).raw)
 
-    # VERY important: text queries need to be lowercased + end with a dot
-    text = "a mask. a glove. a hairnet."
+    image_urls = [
+        "https://www.news-medical.net/image-handler/picture/2021/11/shutterstock_1118088002.jpg",
+        "https://t3.ftcdn.net/jpg/08/34/47/68/360_F_834476874_gZcJ7MhKJZUWU6RFEYthy4oEtNo6Iris.jpg"
+    ]
 
-    # Use the modular function
-    results = detect_objects_in_image(image, text, threshold=0.3)
+    for image_url in image_urls:
+        image = Image.open(requests.get(image_url, stream=True).raw)
 
-    # Print the detection results
-    for result in results:
-        print(f"Detected {len(result['boxes'])} objects:")
-        for i, (box, score, label) in enumerate(zip(result['boxes'], result['scores'], result['labels'])):
-            print(f"  {i+1}. {label}: {score:.3f} confidence")
-            print(f"     Box coordinates: {box}")
+        # VERY important: text queries need to be lowercased + end with a dot
+        text = "a mask. a glove. a hairnet."
 
-    # Visualize the detections
-    text_queries = text.split('.')[:-1]  # Remove empty string from split
-    visualize_detections(image, results, text_queries)
+        # Use the modular function
+        results = detect_objects_in_image(image, text, threshold=0.3)
+
+        # Print the detection results
+        for result in results:
+            print(f"Detected {len(result['boxes'])} objects:")
+            for i, (box, score, label) in enumerate(zip(result['boxes'], result['scores'], result['labels'])):
+                print(f"  {i+1}. {label}: {score:.3f} confidence")
+                print(f"     Box coordinates: {box}")
+
+        # Visualize the detections
+        text_queries = text.split('.')[:-1]  # Remove empty string from split
+        visualize_detections(image, results, text_queries)
 
 if __name__ == "__main__":
     main()
