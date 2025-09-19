@@ -24,16 +24,16 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"❌ Database initialization failed: {e}")
         raise
-    
+
     yield
-    
+
     # Shutdown
     print("🦆 Quack API shutting down...")
 
 
 def create_app() -> FastAPI:
     """Create and configure FastAPI application."""
-    
+
     # Create FastAPI app
     app = FastAPI(
         title=settings.API_TITLE,
@@ -43,7 +43,7 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
         lifespan=lifespan
     )
-    
+
     # Add CORS middleware
     app.add_middleware(
         CORSMiddleware,
@@ -52,14 +52,14 @@ def create_app() -> FastAPI:
         allow_methods=settings.CORS_ALLOW_METHODS,
         allow_headers=settings.CORS_ALLOW_HEADERS,
     )
-    
+
     # Include routers
     app.include_router(health.router)
     app.include_router(users.router)
     app.include_router(entries.router)
     app.include_router(entries.user_entries_router)
     app.include_router(entries.room_entries_router)
-    
+
     return app
 
 
