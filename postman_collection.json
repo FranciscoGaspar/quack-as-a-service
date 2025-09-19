@@ -1,0 +1,718 @@
+{
+  "info": {
+    "name": "🦆 Quack as a Service API",
+    "description": "Complete API collection for room entry tracking with security equipment compliance",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🏥 Health Endpoints",
+      "item": [
+        {
+          "name": "Root Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": ["{{baseUrl}}"],
+              "path": [""]
+            },
+            "description": "Basic health check endpoint"
+          }
+        },
+        {
+          "name": "Detailed Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Detailed health check with database stats"
+          }
+        }
+      ],
+      "description": "System health and status endpoints"
+    },
+    {
+      "name": "👥 User Management",
+      "item": [
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Alice Johnson\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            },
+            "description": "Create a new user"
+          }
+        },
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            },
+            "description": "Retrieve all users"
+          }
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "1"]
+            },
+            "description": "Get specific user by ID"
+          }
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Alice Cooper\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "1"]
+            },
+            "description": "Update user information"
+          }
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "1"]
+            },
+            "description": "Delete a user"
+          }
+        }
+      ],
+      "description": "User CRUD operations"
+    },
+    {
+      "name": "🏠 Personal Entries",
+      "item": [
+        {
+          "name": "Create Entry (Compliant)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": 1,\n  \"room_name\": \"Laboratory A\",\n  \"equipment\": {\n    \"mask\": true,\n    \"right_glove\": true,\n    \"left_glove\": true,\n    \"hairnet\": true,\n    \"safety_glasses\": true\n  },\n  \"image_url\": \"https://example.com/entry1.jpg\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/entries",
+              "host": ["{{baseUrl}}"],
+              "path": ["entries"]
+            },
+            "description": "Create a compliant room entry (all equipment present)"
+          }
+        },
+        {
+          "name": "Create Entry (Non-Compliant)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": 2,\n  \"room_name\": \"Laboratory B\",\n  \"equipment\": {\n    \"mask\": true,\n    \"right_glove\": true,\n    \"left_glove\": false,\n    \"hairnet\": false,\n    \"safety_glasses\": true\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/entries",
+              "host": ["{{baseUrl}}"],
+              "path": ["entries"]
+            },
+            "description": "Create a non-compliant room entry (missing equipment)"
+          }
+        },
+        {
+          "name": "Create Entry (Anonymous)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"room_name\": \"Clean Room C\",\n  \"equipment\": {\n    \"mask\": true,\n    \"right_glove\": true,\n    \"left_glove\": true,\n    \"hairnet\": true\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/entries",
+              "host": ["{{baseUrl}}"],
+              "path": ["entries"]
+            },
+            "description": "Create an anonymous room entry (no user specified)"
+          }
+        },
+        {
+          "name": "Get All Entries",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/entries",
+              "host": ["{{baseUrl}}"],
+              "path": ["entries"]
+            },
+            "description": "Retrieve all personal entries"
+          }
+        },
+        {
+          "name": "Get Entries (Limited)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/entries?limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["entries"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "5",
+                  "description": "Limit number of results"
+                }
+              ]
+            },
+            "description": "Get entries with result limit"
+          }
+        },
+        {
+          "name": "Get Entry by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/entries/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["entries", "1"]
+            },
+            "description": "Get specific entry by ID"
+          }
+        },
+        {
+          "name": "Update Entry",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"room_name\": \"Laboratory A - Section 2\",\n  \"equipment\": {\n    \"mask\": true,\n    \"right_glove\": true,\n    \"left_glove\": true,\n    \"hairnet\": true,\n    \"safety_glasses\": false\n  },\n  \"image_url\": \"https://example.com/updated.jpg\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/entries/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["entries", "1"]
+            },
+            "description": "Update complete entry information"
+          }
+        },
+        {
+          "name": "Delete Entry",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/entries/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["entries", "1"]
+            },
+            "description": "Delete a personal entry"
+          }
+        }
+      ],
+      "description": "Personal entry CRUD operations"
+    },
+    {
+      "name": "🔧 Equipment Updates",
+      "item": [
+        {
+          "name": "Fix Missing Equipment",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"left_glove\": true,\n  \"hairnet\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/entries/2/equipment",
+              "host": ["{{baseUrl}}"],
+              "path": ["entries", "2", "equipment"]
+            },
+            "description": "Update specific equipment items to fix compliance issues"
+          }
+        },
+        {
+          "name": "Remove Equipment",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mask\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/entries/1/equipment",
+              "host": ["{{baseUrl}}"],
+              "path": ["entries", "1", "equipment"]
+            },
+            "description": "Remove or mark equipment as not present"
+          }
+        }
+      ],
+      "description": "Partial equipment updates using PATCH"
+    },
+    {
+      "name": "🔍 Query Endpoints",
+      "item": [
+        {
+          "name": "Get User's Entries",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/1/entries",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "1", "entries"]
+            },
+            "description": "Get all entries for a specific user"
+          }
+        },
+        {
+          "name": "Get User's Entries (Limited)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/1/entries?limit=3",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "1", "entries"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "3",
+                  "description": "Limit number of results"
+                }
+              ]
+            },
+            "description": "Get limited entries for a specific user"
+          }
+        },
+        {
+          "name": "Get Room's Entries",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rooms/Laboratory A/entries",
+              "host": ["{{baseUrl}}"],
+              "path": ["rooms", "Laboratory A", "entries"]
+            },
+            "description": "Get all entries for a specific room"
+          }
+        },
+        {
+          "name": "Get Room's Entries (Limited)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rooms/Clean Room C/entries?limit=2",
+              "host": ["{{baseUrl}}"],
+              "path": ["rooms", "Clean Room C", "entries"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "2",
+                  "description": "Limit number of results"
+                }
+              ]
+            },
+            "description": "Get limited entries for a specific room"
+          }
+        }
+      ],
+      "description": "Query entries by user or room"
+    },
+    {
+      "name": "⚠️ Error Test Cases",
+      "item": [
+        {
+          "name": "Create User - Empty Name",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            },
+            "description": "Test validation error with empty name"
+          }
+        },
+        {
+          "name": "Create User - Missing Name",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            },
+            "description": "Test validation error with missing name field"
+          }
+        },
+        {
+          "name": "Create Entry - Missing Room Name",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": 1,\n  \"equipment\": {\n    \"mask\": true\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/entries",
+              "host": ["{{baseUrl}}"],
+              "path": ["entries"]
+            },
+            "description": "Test validation error with missing room_name"
+          }
+        },
+        {
+          "name": "Create Entry - Invalid User ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": 999,\n  \"room_name\": \"Test Room\",\n  \"equipment\": {\n    \"mask\": true\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/entries",
+              "host": ["{{baseUrl}}"],
+              "path": ["entries"]
+            },
+            "description": "Test behavior with non-existent user ID"
+          }
+        },
+        {
+          "name": "Get Non-Existent User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/999",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "999"]
+            },
+            "description": "Test 404 error for non-existent user"
+          }
+        },
+        {
+          "name": "Get Non-Existent Entry",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/entries/999",
+              "host": ["{{baseUrl}}"],
+              "path": ["entries", "999"]
+            },
+            "description": "Test 404 error for non-existent entry"
+          }
+        },
+        {
+          "name": "Get Non-Existent User's Entries",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/999/entries",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "999", "entries"]
+            },
+            "description": "Test 404 error for entries of non-existent user"
+          }
+        }
+      ],
+      "description": "Test cases for error handling and edge cases"
+    },
+    {
+      "name": "📊 Sample Workflow",
+      "item": [
+        {
+          "name": "1. Create Test User - John",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            },
+            "description": "Step 1: Create a test user"
+          }
+        },
+        {
+          "name": "2. Create Test User - Jane",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Smith\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            },
+            "description": "Step 2: Create another test user"
+          }
+        },
+        {
+          "name": "3. John Enters Lab (Non-Compliant)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": 1,\n  \"room_name\": \"Main Laboratory\",\n  \"equipment\": {\n    \"mask\": true,\n    \"right_glove\": true,\n    \"left_glove\": false,\n    \"hairnet\": false,\n    \"safety_glasses\": true\n  },\n  \"image_url\": \"https://example.com/john_entry.jpg\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/entries",
+              "host": ["{{baseUrl}}"],
+              "path": ["entries"]
+            },
+            "description": "Step 3: John enters lab missing some equipment"
+          }
+        },
+        {
+          "name": "4. Fix John's Equipment",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"left_glove\": true,\n  \"hairnet\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/entries/1/equipment",
+              "host": ["{{baseUrl}}"],
+              "path": ["entries", "1", "equipment"]
+            },
+            "description": "Step 4: John puts on missing equipment"
+          }
+        },
+        {
+          "name": "5. Jane Enters Clean Room (Compliant)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": 2,\n  \"room_name\": \"Clean Room Alpha\",\n  \"equipment\": {\n    \"mask\": true,\n    \"right_glove\": true,\n    \"left_glove\": true,\n    \"hairnet\": true,\n    \"safety_glasses\": true\n  },\n  \"image_url\": \"https://example.com/jane_entry.jpg\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/entries",
+              "host": ["{{baseUrl}}"],
+              "path": ["entries"]
+            },
+            "description": "Step 5: Jane enters clean room fully compliant"
+          }
+        },
+        {
+          "name": "6. Check Lab Entries",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rooms/Main Laboratory/entries",
+              "host": ["{{baseUrl}}"],
+              "path": ["rooms", "Main Laboratory", "entries"]
+            },
+            "description": "Step 6: Check who entered the main lab"
+          }
+        },
+        {
+          "name": "7. Check John's History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/1/entries",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "1", "entries"]
+            },
+            "description": "Step 7: Check John's entry history"
+          }
+        },
+        {
+          "name": "8. Final System Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Step 8: Check final system health and stats"
+          }
+        }
+      ],
+      "description": "Complete workflow demonstrating typical API usage"
+    }
+  ]
+}
