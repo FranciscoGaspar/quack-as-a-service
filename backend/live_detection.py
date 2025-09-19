@@ -365,32 +365,30 @@ class LiveObjectDetector:
             f"Frames: {self.stats['total_frames']}",
             f"Objects: {self.stats['objects_detected']}",
             f"Saved: {self.stats['frames_saved']}",
-            f"Auto: {self.stats['auto_captures']} | Manual: {self.stats['manual_captures']}",
             f"FPS: {self.stats['total_frames']/runtime:.1f}" if runtime > 0 else "FPS: 0",
-            f"Mode: Pure photo booth"
         ]
         
         # Add countdown status
         if self.countdown_active:
             remaining = self.get_countdown_remaining()
             if remaining > 0:
-                status_lines.append(f"⏰ COUNTDOWN: {remaining:.1f}s")
+                status_lines.append(f"COUNTDOWN: {remaining:.1f}s")
             else:
-                status_lines.append("📸 CAPTURING...")
+                status_lines.append("CAPTURING...")
         else:
-            status_lines.append("🎯 Always-take-picture mode")
+            status_lines.append("Always-take-picture mode")
         
         # Add async detection status
         if self.detection_in_progress:
-            status_lines.append("🔄 Detecting objects...")
+            status_lines.append("Detecting objects...")
         elif self.detection_queue.qsize() > 0:
-            status_lines.append(f"⏳ Queue: {self.detection_queue.qsize()}")
+            status_lines.append(f"Queue: {self.detection_queue.qsize()}")
         else:
-            status_lines.append("✅ Detection ready")
+            status_lines.append("Detection ready")
         
         # Draw semi-transparent background
         overlay = frame.copy()
-        cv2.rectangle(overlay, (10, 10), (300, 150), (0, 0, 0), -1)
+        cv2.rectangle(overlay, (10, 10), (300, 180), (0, 0, 0), -1)
         cv2.addWeighted(overlay, 0.7, frame, 0.32, 0, frame)
         
         # Draw status text
