@@ -36,8 +36,8 @@ class LiveObjectDetector:
         print(f"📁 Output directory: {self.output_dir}")
         
         # Detection parameters
-        self.person_detection_threshold = 0.2  # Lowered for better detection
-        self.object_detection_threshold = 0.2
+        self.person_detection_threshold = 0.32  # Lowered for better detection
+        self.object_detection_threshold = 0.32
         self.text_queries = "a mask. a glove. a hairnet."
         
         # Frame processing parameters
@@ -242,7 +242,7 @@ class LiveObjectDetector:
         
         return boxes, weights
     
-    def _remove_duplicate_detections(self, boxes, weights, overlap_threshold=0.3):
+    def _remove_duplicate_detections(self, boxes, weights, overlap_threshold=0.32):
         """Remove duplicate detections based on overlap"""
         if len(boxes) == 0:
             return [], []
@@ -365,33 +365,31 @@ class LiveObjectDetector:
             f"Frames: {self.stats['total_frames']}",
             f"Objects: {self.stats['objects_detected']}",
             f"Saved: {self.stats['frames_saved']}",
-            f"Auto: {self.stats['auto_captures']} | Manual: {self.stats['manual_captures']}",
             f"FPS: {self.stats['total_frames']/runtime:.1f}" if runtime > 0 else "FPS: 0",
-            f"Mode: Pure photo booth"
         ]
         
         # Add countdown status
         if self.countdown_active:
             remaining = self.get_countdown_remaining()
             if remaining > 0:
-                status_lines.append(f"⏰ COUNTDOWN: {remaining:.1f}s")
+                status_lines.append(f"COUNTDOWN: {remaining:.1f}s")
             else:
-                status_lines.append("📸 CAPTURING...")
+                status_lines.append("CAPTURING...")
         else:
-            status_lines.append("🎯 Always-take-picture mode")
+            status_lines.append("Always-take-picture mode")
         
         # Add async detection status
         if self.detection_in_progress:
-            status_lines.append("🔄 Detecting objects...")
+            status_lines.append("Detecting objects...")
         elif self.detection_queue.qsize() > 0:
-            status_lines.append(f"⏳ Queue: {self.detection_queue.qsize()}")
+            status_lines.append(f"Queue: {self.detection_queue.qsize()}")
         else:
-            status_lines.append("✅ Detection ready")
+            status_lines.append("Detection ready")
         
         # Draw semi-transparent background
         overlay = frame.copy()
-        cv2.rectangle(overlay, (10, 10), (300, 150), (0, 0, 0), -1)
-        cv2.addWeighted(overlay, 0.7, frame, 0.3, 0, frame)
+        cv2.rectangle(overlay, (10, 10), (300, 180), (0, 0, 0), -1)
+        cv2.addWeighted(overlay, 0.7, frame, 0.32, 0, frame)
         
         # Draw status text
         for i, line in enumerate(status_lines):
@@ -609,7 +607,6 @@ class LiveObjectDetector:
                 if time.time() - last_status_time > 10:  # Every 10 seconds
                     runtime = time.time() - self.stats['start_time']
                     fps = frame_count / runtime if runtime > 0 else 0
-                    print(f"📊 Status: {frame_count} frames, {fps:.1f} FPS, {self.stats['persons_detected']} persons, {self.stats['objects_detected']} objects")
                     last_status_time = time.time()
                 
                 # Handle key presses
@@ -661,7 +658,7 @@ class LiveObjectDetector:
                     print("🔄 Statistics reset!")
                 elif key == ord('t'):
                     # Toggle detection threshold
-                    self.person_detection_threshold = 0.3 if self.person_detection_threshold > 0.5 else 0.7
+                    self.person_detection_threshold = 0.32 if self.person_detection_threshold > 0.5 else 0.7
                     print(f"🎚️  Person detection threshold: {self.person_detection_threshold}")
                 elif key == ord('d'):
                     # Toggle debug mode
