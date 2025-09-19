@@ -36,8 +36,8 @@ class LiveObjectDetector:
         print(f"📁 Output directory: {self.output_dir}")
         
         # Detection parameters
-        self.person_detection_threshold = 0.2  # Lowered for better detection
-        self.object_detection_threshold = 0.2
+        self.person_detection_threshold = 0.32  # Lowered for better detection
+        self.object_detection_threshold = 0.32
         self.text_queries = "a mask. a glove. a hairnet."
         
         # Frame processing parameters
@@ -609,7 +609,6 @@ class LiveObjectDetector:
                 if time.time() - last_status_time > 10:  # Every 10 seconds
                     runtime = time.time() - self.stats['start_time']
                     fps = frame_count / runtime if runtime > 0 else 0
-                    print(f"📊 Status: {frame_count} frames, {fps:.1f} FPS, {self.stats['persons_detected']} persons, {self.stats['objects_detected']} objects")
                     last_status_time = time.time()
                 
                 # Handle key presses
