@@ -284,6 +284,125 @@ def visualize_detections(image, results, text_queries, missing_items):
                    fontsize=10, color=color, weight='bold',
                    bbox=dict(boxstyle="round,pad=0.32", facecolor='white', alpha=0.8))
     
+    # Detect hands and head using the model, then add red squares for missing items
+    image_width, image_height = image.size
+    
+    # Detect body parts
+    body_parts_query = "a head. a hand. hands."
+    body_parts_results = detect_objects_in_image(image, body_parts_query, threshold=0.3)
+    
+    # Extract detected body parts
+    detected_heads = []
+    detected_hands = []
+    
+    for result in body_parts_results:
+        for box, score, label in zip(result['boxes'], result['scores'], result['labels']):
+            label_lower = label.lower().strip()
+            if 'head' in label_lower:
+                detected_heads.append((box, score))
+            elif 'hand' in label_lower:
+                detected_hands.append((box, score))
+    
+    # Add red squares for missing items
+    for missing_item in missing_items:
+        missing_lower = missing_item.lower().strip()
+        
+        if 'mask' in missing_lower:
+            if detected_heads:
+                # Use the highest confidence head detection
+                best_head = max(detected_heads, key=lambda x: x[1])
+                head_box = best_head[0]
+                
+                # Convert box coordinates
+                if hasattr(head_box, 'cpu'):
+                    head_box = head_box.cpu().numpy()
+                x1, y1, x2, y2 = head_box
+                
+                # Draw red square around detected head
+                head_square = patches.Rectangle((x1, y1), x2-x1, y2-y1, 
+                                              linewidth=3, edgecolor='red', facecolor='none')
+                ax.add_patch(head_square)
+                ax.text(x1, y1-15, 'MISSING MASK', 
+                       fontsize=10, color='red', weight='bold',
+                       bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
+            else:
+                # Fallback to fixed position if no head detected
+                head_size = min(image_width, image_height) * 0.2
+                head_x = image_width * 0.35
+                head_y = image_height * 0.05
+                head_square = patches.Rectangle((head_x, head_y), head_size, head_size, 
+                                              linewidth=3, edgecolor='red', facecolor='none')
+                ax.add_patch(head_square)
+                ax.text(head_x + head_size/2, head_y - 15, 'MISSING MASK', 
+                       fontsize=10, color='red', weight='bold', ha='center',
+                       bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
+        
+        if 'hairnet' in missing_lower:
+            if detected_heads:
+                # Use the highest confidence head detection
+                best_head = max(detected_heads, key=lambda x: x[1])
+                head_box = best_head[0]
+                
+                # Convert box coordinates
+                if hasattr(head_box, 'cpu'):
+                    head_box = head_box.cpu().numpy()
+                x1, y1, x2, y2 = head_box
+                
+                # Draw red square around detected head
+                head_square = patches.Rectangle((x1, y1), x2-x1, y2-y1, 
+                                              linewidth=3, edgecolor='red', facecolor='none')
+                ax.add_patch(head_square)
+                ax.text(x1, y1-15, 'MISSING HAIRNET', 
+                       fontsize=10, color='red', weight='bold',
+                       bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
+            else:
+                # Fallback to fixed position if no head detected
+                head_size = min(image_width, image_height) * 0.2
+                head_x = image_width * 0.35
+                head_y = image_height * 0.05
+                head_square = patches.Rectangle((head_x, head_y), head_size, head_size, 
+                                              linewidth=3, edgecolor='red', facecolor='none')
+                ax.add_patch(head_square)
+                ax.text(head_x + head_size/2, head_y - 15, 'MISSING HAIRNET', 
+                       fontsize=10, color='red', weight='bold', ha='center',
+                       bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
+        
+        if 'glove' in missing_lower:
+            if detected_hands:
+                # Draw red squares around detected hands
+                for i, (hand_box, score) in enumerate(detected_hands[:2]):  # Limit to 2 hands
+                    # Convert box coordinates
+                    if hasattr(hand_box, 'cpu'):
+                        hand_box = hand_box.cpu().numpy()
+                    x1, y1, x2, y2 = hand_box
+                    
+                    # Draw red square around detected hand
+                    hand_square = patches.Rectangle((x1, y1), x2-x1, y2-y1, 
+                                                  linewidth=3, edgecolor='red', facecolor='none')
+                    ax.add_patch(hand_square)
+                
+                ax.text(image_width/2, image_height * 0.8, 'MISSING HAND PROTECTION', 
+                       fontsize=10, color='red', weight='bold', ha='center',
+                       bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
+            else:
+                # Fallback to fixed positions if no hands detected
+                hand_size = min(image_width, image_height) * 0.12
+                left_hand_x = image_width * 0.1
+                left_hand_y = image_height * 0.5
+                left_hand_square = patches.Rectangle((left_hand_x, left_hand_y), hand_size, hand_size, 
+                                                  linewidth=3, edgecolor='red', facecolor='none')
+                ax.add_patch(left_hand_square)
+                
+                right_hand_x = image_width * 0.8
+                right_hand_y = image_height * 0.5
+                right_hand_square = patches.Rectangle((right_hand_x, right_hand_y), hand_size, hand_size, 
+                                                    linewidth=3, edgecolor='red', facecolor='none')
+                ax.add_patch(right_hand_square)
+                
+                ax.text(image_width/2, left_hand_y + hand_size + 20, 'MISSING HAND PROTECTION', 
+                       fontsize=10, color='red', weight='bold', ha='center',
+                       bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
+
     ax.set_title(f'Object Detection Results\nQueries: {", ".join(text_queries)}\nMissing items: {", ".join(missing_items)}', 
                 fontsize=14, weight='bold')
     ax.axis('off')
@@ -295,10 +414,13 @@ def main():
     """Main function to run the improved image detection script with better false positive handling"""
 
     image_urls = [
-        "https://dmrqkbkq8el9i.cloudfront.net/Pictures/2000xAny/4/1/3/182413_factoryworkerstaffproduction_540368.jpg"
+        # "https://dmrqkbkq8el9i.cloudfront.net/Pictures/2000xAny/4/1/3/182413_factoryworkerstaffproduction_540368.jpg"
+        # "https://thumbs.dreamstime.com/b/portrait-food-factory-worker-male-female-thumbs-up-happy-enjoy-working-clean-hygiene-dressing-good-quality-products-220989405.jpg",
+        "https://st2.depositphotos.com/3450477/11066/i/950/depositphotos_110669406-stock-photo-young-man-wearing-gloves.jpg"
     ]
+
     # Define required safety items
-    required_items = ['masks', 'gloves', 'hairnets']
+    required_items = ['mask', 'glove', 'hairnet']
 
     text_queries = ". ".join(required_items) + "."
     
