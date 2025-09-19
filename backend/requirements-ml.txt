@@ -1,0 +1,11 @@
+# Optional ML Dependencies for Object Detection
+# Install these separately if you need object detection features
+
+# PyTorch (CPU version - smaller download)
+torch>=1.9.0 --index-url https://download.pytorch.org/whl/cpu
+torchvision>=0.10.0 --index-url https://download.pytorch.org/whl/cpu
+
+# Transformers for GroundingDINO
+transformers>=4.20.0
+
+# Install with: pip install -r requirements-ml.txt
