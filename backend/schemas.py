@@ -9,8 +9,10 @@ from pydantic import BaseModel, Field
 
 class UserBase(BaseModel):
     """Base user schema."""
-    name: str = Field(..., min_length=1, max_length=100, description="User's name")
-    qr_code: Optional[str] = Field(None, max_length=255, description="Unique QR code for the user")
+    name: str = Field(..., min_length=1, max_length=100,
+                      description="User's name")
+    qr_code: Optional[str] = Field(
+        None, max_length=255, description="Unique QR code for the user")
 
 
 class UserCreate(UserBase):
@@ -20,8 +22,10 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     """Schema for updating a user."""
-    name: Optional[str] = Field(None, min_length=1, max_length=100, description="User's name")
-    qr_code: Optional[str] = Field(None, max_length=255, description="Unique QR code for the user")
+    name: Optional[str] = Field(
+        None, min_length=1, max_length=100, description="User's name")
+    qr_code: Optional[str] = Field(
+        None, max_length=255, description="Unique QR code for the user")
 
 
 class UserResponse(UserBase):
@@ -36,9 +40,12 @@ class UserResponse(UserBase):
 
 class PersonalEntryBase(BaseModel):
     """Base personal entry schema."""
-    room_name: str = Field(..., min_length=1, max_length=100, description="Room name")
-    equipment: Dict[str, bool] = Field(..., description="Equipment tracking (e.g., {'mask': True, 'gloves': False})")
-    image_url: Optional[str] = Field(None, max_length=500, description="URL to entry image")
+    room_name: str = Field(..., min_length=1,
+                           max_length=100, description="Room name")
+    equipment: Dict[str, bool] = Field(
+        ..., description="Equipment tracking (e.g., {'mask': True, 'gloves': False})")
+    image_url: Optional[str] = Field(
+        None, max_length=500, description="URL to entry image")
 
 
 class PersonalEntryCreate(PersonalEntryBase):
@@ -48,26 +55,12 @@ class PersonalEntryCreate(PersonalEntryBase):
 
 class PersonalEntryUpdate(BaseModel):
     """Schema for updating a personal entry."""
-    room_name: Optional[str] = Field(None, min_length=1, max_length=100, description="Room name")
-    equipment: Optional[Dict[str, bool]] = Field(None, description="Equipment tracking")
-    image_url: Optional[str] = Field(None, max_length=500, description="URL to entry image")
-
-
-class EmotionalAnalysisResponse(BaseModel):
-    """Schema for emotional analysis response."""
-    id: int
-    personal_entry_id: int
-    faces_detected: int = Field(..., description="Number of faces detected")
-    dominant_emotion: Optional[str] = Field(None, description="Primary emotion detected")
-    overall_confidence: Optional[float] = Field(None, description="Confidence score for dominant emotion (0-100)")
-    image_quality: Optional[str] = Field(None, description="Image quality assessment")
-    analysis_data: Optional[Dict[str, Any]] = Field(None, description="Complete analysis data from AWS Rekognition")
-    recommendations: Optional[List[str]] = Field(None, description="Recommendations based on emotional analysis")
-    analyzed_at: datetime
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
+    room_name: Optional[str] = Field(
+        None, min_length=1, max_length=100, description="Room name")
+    equipment: Optional[Dict[str, bool]] = Field(
+        None, description="Equipment tracking")
+    image_url: Optional[str] = Field(
+        None, max_length=500, description="URL to entry image")
 
 
 class PersonalEntryBaseResponse(PersonalEntryBase):
@@ -75,11 +68,12 @@ class PersonalEntryBaseResponse(PersonalEntryBase):
     id: int
     user_id: Optional[int]
     # New approval fields
-    is_approved: Optional[bool] = Field(None, description="Entry approval status (True=approved, False=denied, None=pending)")
-    equipment_score: Optional[float] = Field(None, description="Equipment compliance score (0-100)")
-    approval_reason: Optional[str] = Field(None, description="Reason for approval/denial decision")
-    # Emotional analysis relationship
-    emotional_analysis: Optional[EmotionalAnalysisResponse] = Field(None, description="Emotional analysis results")
+    is_approved: Optional[bool] = Field(
+        None, description="Entry approval status (True=approved, False=denied, None=pending)")
+    equipment_score: Optional[float] = Field(
+        None, description="Equipment compliance score (0-100)")
+    approval_reason: Optional[str] = Field(
+        None, description="Reason for approval/denial decision")
     entered_at: datetime
     created_at: datetime
 
@@ -89,9 +83,12 @@ class PersonalEntryBaseResponse(PersonalEntryBase):
 
 class PersonalEntryResponse(PersonalEntryBaseResponse):
     """Schema for personal entry response with computed fields."""
-    is_compliant: bool = Field(..., description="Whether all required equipment is present")
-    missing_equipment: list[str] = Field(..., description="List of missing equipment items")
-    user_name: Optional[str] = Field(None, description="Name of the user associated with this entry")
+    is_compliant: bool = Field(...,
+                               description="Whether all required equipment is present")
+    missing_equipment: list[str] = Field(...,
+                                         description="List of missing equipment items")
+    user_name: Optional[str] = Field(
+        None, description="Name of the user associated with this entry")
 
 
 class EquipmentUpdate(BaseModel):
@@ -115,18 +112,24 @@ class SuccessResponse(BaseModel):
 
 class ImageUploadRequest(BaseModel):
     """Schema for image upload request."""
-    room_name: str = Field(..., min_length=1, max_length=100, description="Room name")
+    room_name: str = Field(..., min_length=1,
+                           max_length=100, description="Room name")
     user_id: int = Field(..., description="User ID (required)")
 
 
 # Room Equipment Configuration Schemas
 class RoomEquipmentConfigurationBase(BaseModel):
     """Base schema for room equipment configuration."""
-    room_name: str = Field(..., min_length=1, max_length=100, description="Room name")
-    equipment_weights: Dict[str, str] = Field(..., description="Equipment requirement levels (e.g., {'mask': 'required', 'gloves': 'recommended'})")
-    entry_threshold: float = Field(70.0, ge=0, le=100, description="Minimum score required for entry approval (0-100)")
-    description: Optional[str] = Field(None, max_length=500, description="Room configuration description")
-    is_active: bool = Field(True, description="Whether this configuration is active")
+    room_name: str = Field(..., min_length=1,
+                           max_length=100, description="Room name")
+    equipment_weights: Dict[str, str] = Field(
+        ..., description="Equipment requirement levels (e.g., {'mask': 'required', 'gloves': 'recommended'})")
+    entry_threshold: float = Field(
+        70.0, ge=0, le=100, description="Minimum score required for entry approval (0-100)")
+    description: Optional[str] = Field(
+        None, max_length=500, description="Room configuration description")
+    is_active: bool = Field(
+        True, description="Whether this configuration is active")
 
 
 class RoomEquipmentConfigurationCreate(RoomEquipmentConfigurationBase):
@@ -136,10 +139,14 @@ class RoomEquipmentConfigurationCreate(RoomEquipmentConfigurationBase):
 
 class RoomEquipmentConfigurationUpdate(BaseModel):
     """Schema for updating a room equipment configuration."""
-    equipment_weights: Optional[Dict[str, float]] = Field(None, description="Equipment weights")
-    entry_threshold: Optional[float] = Field(None, ge=0, le=100, description="Minimum score for entry approval")
-    description: Optional[str] = Field(None, max_length=500, description="Room configuration description")
-    is_active: Optional[bool] = Field(None, description="Whether this configuration is active")
+    equipment_weights: Optional[Dict[str, float]] = Field(
+        None, description="Equipment weights")
+    entry_threshold: Optional[float] = Field(
+        None, ge=0, le=100, description="Minimum score for entry approval")
+    description: Optional[str] = Field(
+        None, max_length=500, description="Room configuration description")
+    is_active: Optional[bool] = Field(
+        None, description="Whether this configuration is active")
 
 
 class RoomEquipmentConfigurationResponse(RoomEquipmentConfigurationBase):
@@ -155,13 +162,54 @@ class RoomEquipmentConfigurationResponse(RoomEquipmentConfigurationBase):
 # Enhanced schemas for approval status display
 class ApprovalStatusDisplay(BaseModel):
     """Schema for displaying approval status information."""
-    status: str = Field(..., description="Human-readable approval status (Approved/Denied/Pending)")
-    color: str = Field(..., description="Color for status badge (green/red/yellow)")
-    score: Optional[float] = Field(None, description="Equipment compliance score")
-    threshold: Optional[float] = Field(None, description="Required threshold for approval")
+    status: str = Field(...,
+                        description="Human-readable approval status (Approved/Denied/Pending)")
+    color: str = Field(...,
+                       description="Color for status badge (green/red/yellow)")
+    score: Optional[float] = Field(
+        None, description="Equipment compliance score")
+    threshold: Optional[float] = Field(
+        None, description="Required threshold for approval")
     reason: Optional[str] = Field(None, description="Approval/denial reason")
 
 
 class PersonalEntryWithApprovalStatus(PersonalEntryResponse):
     """Enhanced entry response with approval status display information."""
-    approval_status: ApprovalStatusDisplay = Field(..., description="Approval status display information")
+    approval_status: ApprovalStatusDisplay = Field(
+        ..., description="Approval status display information")
+
+
+class FallDetectionResult(BaseModel):
+    """Schema for fall detection analysis results."""
+    fall_detected: bool = Field(..., description="Whether a fall was detected")
+    total_detections: int = Field(...,
+                                  description="Total number of fall detections found")
+    confidence_scores: List[float] = Field(
+        default=[], description="Confidence scores for detections")
+    video_duration: float = Field(...,
+                                  description="Total video duration in seconds")
+    processing_time: float = Field(...,
+                                   description="Time taken to process the video")
+    analysis_timestamp: str = Field(...,
+                                    description="When the analysis was performed")
+    model_version: str = Field(..., description="YOLO model version used")
+
+
+class FallDetectionResponse(BaseModel):
+    """Schema for fall detection response."""
+    id: Optional[int] = Field(None, description="Database entry ID if saved")
+    user_id: Optional[int] = Field(None, description="User ID")
+    location: Optional[str] = Field(
+        None, description="Location where video was recorded")
+    detection_result: FallDetectionResult = Field(
+        ..., description="Fall detection analysis results")
+    original_video_url: Optional[str] = Field(
+        None, description="URL to original video in S3")
+    processed_video_url: Optional[str] = Field(
+        None, description="URL to processed/annotated video in S3")
+    processing_timestamp: str = Field(...,
+                                      description="When the video was processed")
+    video_filename: Optional[str] = Field(
+        None, description="Original video filename")
+    created_at: Optional[datetime] = Field(
+        None, description="When the entry was created")
