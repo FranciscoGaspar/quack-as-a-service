@@ -6,7 +6,7 @@ import type { FactoryEntries } from "@/services/factoryEntries.service";
 import type { ColumnDef } from "@tanstack/react-table";
 import { CheckCircle2 } from "lucide-react";
 
-export const createColumns = (onViewCompliance: (entry: FactoryEntries) => void): ColumnDef<FactoryEntries>[] => [
+export const columns: ColumnDef<FactoryEntries>[] = [
   {
     accessorKey: "user_id",
     header: "User",
@@ -15,6 +15,12 @@ export const createColumns = (onViewCompliance: (entry: FactoryEntries) => void)
   {
     accessorKey: "room_name",
     header: "Room Name",
+    cell: ({ row }) => {
+      const { room_name } = row.original;
+      return (
+        <span className="capitalize">{room_name.replaceAll("-", " ")}</span>
+      );
+    },
   },
   {
     accessorKey: "equipment",
@@ -47,7 +53,7 @@ export const createColumns = (onViewCompliance: (entry: FactoryEntries) => void)
     size: 50,
     cell: ({ row }) => {
       const factoryEntry = row.original;
-      return <FactoryEntriesActions factoryEntry={factoryEntry} onViewCompliance={onViewCompliance} />;
+      return <FactoryEntriesActions factoryEntry={factoryEntry} />;
     },
   },
 ];
