@@ -16,6 +16,7 @@ else
     echo "✅ Backend ML environment already exists!"
     source venv-ml/bin/activate
     pip install -r requirements.txt  # Update dependencies
+    pip install -r requirements-ml.txt
     echo "✅ Dependencies updated!"
 fi
 
