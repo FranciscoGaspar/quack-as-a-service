@@ -1,4 +1,4 @@
-import axiosInstance from "@/lib/axiosClient";
+import axiosInstance from '@/lib/axiosClient';
 
 export type FactoryEntries = {
   room_name: string;
@@ -6,16 +6,17 @@ export type FactoryEntries = {
   image_url: string;
   id: number;
   user_id: number;
+  user_name: string;
   entered_at: string;
   created_at: string;
   is_compliant: boolean;
 };
 
 export const GetFactoryEntries = async () => {
-  const { data } = await axiosInstance<FactoryEntries[]>("/entries");
+  const { data } = await axiosInstance<FactoryEntries[]>('/entries');
   return data;
 };
 
 export const DeleteFactoryEntry = async (id: number) => {
-  await axiosInstance(`/entries/${id}`, { method: "DELETE" });
+  await axiosInstance(`/entries/${id}`, { method: 'DELETE' });
 };
