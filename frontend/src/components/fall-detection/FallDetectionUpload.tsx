@@ -189,31 +189,6 @@ export const FallDetectionUpload = ({
         </div>
       </div>
 
-      {/* Optional Fields */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="user-id">User ID (Optional)</Label>
-          <Input
-            id="user-id"
-            type="number"
-            placeholder="Enter user ID"
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-            disabled={isUploading || disabled}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="location">Location (Optional)</Label>
-          <Input
-            id="location"
-            placeholder="e.g., Factory Floor, Warehouse"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            disabled={isUploading || disabled}
-          />
-        </div>
-      </div>
-
       {/* Upload Progress */}
       {isUploading && (
         <div className="space-y-2">

@@ -77,7 +77,7 @@ export default function AccidentsPage() {
             <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">YOLO</div>
+            <div className="text-2xl font-bold">falldetect-11x</div>
             <p className="text-xs text-muted-foreground">
               Fall detection model
             </p>
