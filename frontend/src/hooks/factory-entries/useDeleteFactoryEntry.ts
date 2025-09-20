@@ -4,7 +4,7 @@ import { DeleteFactoryEntry } from "@/services/factoryEntries.service";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-export const useDeleteFactoryEntry = (id: string) => {
+export const useDeleteFactoryEntry = (id: number) => {
   const queryClient = getQueryClient();
   const toastID = `delete-factoryEntry-${id}`;
 

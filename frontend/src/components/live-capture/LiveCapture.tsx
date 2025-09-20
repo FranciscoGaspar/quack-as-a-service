@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import axiosClient from "@/lib/axiosClient";
@@ -400,17 +399,11 @@ export const LiveCapture = () => {
         </Card>
       )}
 
-      {/* Equipment Compliance Dialog */}
-      <Dialog open={showComplianceDialog} onOpenChange={setShowComplianceDialog} >
-        <DialogContent className="max-w-7xl max-h-[120vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Equipment Compliance Report</DialogTitle>
-          </DialogHeader>
-          {complianceData && (
-            <EquipmentComplianceDisplay complianceData={complianceData} />
-          )}
-        </DialogContent>
-      </Dialog>
+
+      {complianceData && (
+        <EquipmentComplianceDisplay complianceData={complianceData} showComplianceDialog={showComplianceDialog} setShowComplianceDialog={setShowComplianceDialog} />
+      )}
+          
     </div>
   );
 };

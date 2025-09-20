@@ -2,31 +2,14 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import type { FactoryEntries } from "@/services/factoryEntries.service";
 import { AlertTriangle, CheckCircle, Shield, XCircle } from "lucide-react";
 
-interface EquipmentComplianceData {
-  room_name: string;
-  equipment: {
-    mask: boolean;
-    boots: boolean;
-    hairnet: boolean;
-    hard_hat: boolean;
-    left_glove: boolean;
-    right_glove: boolean;
-    safety_vest: boolean;
-    safety_glasses: boolean;
-  };
-  image_url: string;
-  id: number;
-  user_id: number;
-  entered_at: string;
-  created_at: string;
-  is_compliant: boolean;
-  missing_equipment: string[];
-}
-
 interface EquipmentComplianceDisplayProps {
-  complianceData: EquipmentComplianceData;
+  complianceData: FactoryEntries;
+  showComplianceDialog: boolean;
+  setShowComplianceDialog: (show: boolean) => void;
 }
 
 const equipmentLabels: Record<string, string> = {
@@ -41,23 +24,25 @@ const equipmentLabels: Record<string, string> = {
   safety_glasses: "Safety Glasses"
 };
 
-export const EquipmentComplianceDisplay = ({ complianceData }: EquipmentComplianceDisplayProps) => {
-  const { equipment, image_url, is_compliant, missing_equipment, room_name, entered_at } = complianceData;
+export const EquipmentComplianceDisplay = ({ complianceData, showComplianceDialog, setShowComplianceDialog }: EquipmentComplianceDisplayProps) => {
+  const { equipment, image_url, is_compliant, room_name, entered_at } = complianceData;
 
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString();
   };
 
   return (
-    <div className="space-y-6">
+    <Dialog open={showComplianceDialog} onOpenChange={setShowComplianceDialog} >
+        <DialogContent className="max-w-7xl h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle>
+              <div className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />Equipment Compliance Report
+            </div></DialogTitle>
+          </DialogHeader>
+    <div className="space-y-6 overflow-y-auto flex-1">
       {/* Header Card */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Equipment Compliance Report
-          </CardTitle>
-        </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -113,7 +98,6 @@ export const EquipmentComplianceDisplay = ({ complianceData }: EquipmentComplian
             <div className="space-y-3">
               {Object.entries(equipment).map(([key, isPresent]) => {
                 const label = equipmentLabels[key] || key;
-                const isMissing = missing_equipment.includes(key);
                 
                 return (
                   <div 
@@ -145,5 +129,7 @@ export const EquipmentComplianceDisplay = ({ complianceData }: EquipmentComplian
           </CardContent>
         </Card>
     </div>
+    </DialogContent>
+  </Dialog>
   );
 };

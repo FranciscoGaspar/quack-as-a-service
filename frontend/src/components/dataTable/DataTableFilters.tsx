@@ -1,6 +1,6 @@
 import {
-  DataTableFilter,
-  type Filter,
+    DataTableFilter,
+    type Filter,
 } from "@/components/dataTable/DataTableFilter";
 import { Input } from "@/components/ui/input";
 import type { FilterFn, Table } from "@tanstack/react-table";
@@ -37,16 +37,15 @@ export const DataTableFilters = <TData,>({
           value={value}
         />
       )}
-      {filters.filter &&
-        filters.filter.map((filter) => {
-          return (
-            <DataTableFilter
-              filter={filter}
-              key={filter.column.toString()}
-              table={table}
-            />
-          );
-        })}
+      {filters.filter?.map((filter) => {
+        return (
+          <DataTableFilter
+            filter={filter}
+            key={filter.column.toString()}
+            table={table}
+          />
+        );
+      })}
     </div>
   );
 };
