@@ -3,9 +3,13 @@ Personal entry management endpoints.
 """
 
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Query
+from datetime import datetime, timezone
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Form
+from fastapi.responses import JSONResponse
 
 from database.services import UserService, PersonalEntryService
+from services.image_analysis import ImageAnalysisService
+from utils.s3_uploader import upload_image_bytes_to_s3
 from schemas import (
     PersonalEntryCreate, PersonalEntryUpdate, PersonalEntryResponse,
     PersonalEntryBaseResponse, EquipmentUpdate, SuccessResponse
@@ -124,6 +128,74 @@ async def delete_entry(entry_id: int):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/upload-image", response_model=PersonalEntryResponse)
+async def upload_image_and_analyze(
+    image: UploadFile = File(..., description="Image file to analyze"),
+    room_name: str = Form(..., description="Room name"),
+    user_id: int = Form(..., description="User ID")
+):
+    """
+    Upload an image, analyze it for security equipment, store in S3, and create database entry.
+    
+    This endpoint:
+    1. Receives an image file from the frontend
+    2. Analyzes the image for security equipment (placeholder implementation)
+    3. Uploads the image to S3
+    4. Creates a personal entry in the database
+    5. Returns the standard personal entry response
+    """
+    try:
+        # Validate user exists
+        user = UserService.get_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Validate image file
+        if not image.content_type or not image.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="File must be an image")
+        
+        # Read image bytes
+        image_bytes = await image.read()
+        if len(image_bytes) == 0:
+            raise HTTPException(status_code=400, detail="Empty image file")
+        
+        # Analyze image for security equipment (placeholder)
+        analysis_result = ImageAnalysisService.analyze_image(
+            image_bytes=image_bytes,
+            filename=image.filename
+        )
+        
+        # Add timestamp to analysis result
+        analysis_result["analysis_timestamp"] = datetime.now(timezone.utc).isoformat()
+        
+        # Upload image to S3 (placeholder - will return None if AWS not configured)
+        image_url = upload_image_bytes_to_s3(image_bytes, image.filename)
+        if not image_url:
+            # For development, we can continue without S3 upload
+            print("Warning: S3 upload failed or not configured. Continuing without image URL.")
+            image_url = None
+        
+        # Extract equipment detection from analysis
+        equipment_detected = analysis_result.get("equipment_detected", {})
+        
+        # Create database entry
+        db_entry = PersonalEntryService.create(
+            user_id=user_id,
+            room_name=room_name,
+            equipment=equipment_detected,
+            image_url=image_url
+        )
+        
+        # Return standard personal entry response with computed fields
+        return _add_computed_fields(db_entry)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error in upload_image_and_analyze: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 # Additional endpoints with different URL patterns
