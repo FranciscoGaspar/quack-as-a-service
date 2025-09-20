@@ -14,5 +14,8 @@ numpy<2
 # OpenCV compatible version
 opencv-python>=4.5.0,<4.12.0
 
+# YOLO for Fall Detection
+ultralytics>=8.0.0
+
 # Install with: pip install -r requirements-ml.txt
 # For PyTorch with specific index: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu

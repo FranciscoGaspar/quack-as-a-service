@@ -4,13 +4,13 @@ FastAPI application for Quack as a Service - Room Entry Tracking API.
 Clean, organized FastAPI app with separated routes and configuration.
 """
 
+from api.routes import health, users, entries, rooms, fall_detection, room_configurations
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from core.config import settings
 from database.connection import init_db
-from api.routes import health, users, entries, rooms, room_configurations
 
 
 @asynccontextmanager
@@ -61,6 +61,7 @@ def create_app() -> FastAPI:
     app.include_router(entries.room_entries_router)
     app.include_router(rooms.router)
     app.include_router(room_configurations.router)
+    app.include_router(fall_detection.router)
 
     return app
 
