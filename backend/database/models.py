@@ -11,6 +11,7 @@ class User(Base):
     
     id = Column(Integer, primary_key=True)
     name = Column(String(100), nullable=False)
+    qr_code = Column(String(255), nullable=True, unique=True)  # Unique QR code for each user
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
@@ -24,6 +25,7 @@ class User(Base):
         return {
             'id': self.id,
             'name': self.name,
+            'qr_code': self.qr_code,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
         }

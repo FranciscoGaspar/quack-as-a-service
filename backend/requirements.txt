@@ -22,3 +22,6 @@ boto3>=1.26.0
 
 # Utilities
 python-dateutil>=2.8.0
+
+# QR Code Detection
+pyzbar>=0.1.9
