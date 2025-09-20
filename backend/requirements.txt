@@ -22,3 +22,8 @@ boto3>=1.26.0
 
 # Utilities
 python-dateutil>=2.8.0
+
+# AI and Machine Learning (AWS Bedrock)
+scikit-learn>=1.3.0
+pandas>=2.0.0
+joblib>=1.3.0

@@ -14,6 +14,7 @@ import { pt } from "date-fns/locale";
 import {
   AlertTriangle,
   BarChart3,
+  Brain,
   Building,
   Calendar as CalendarIcon,
   CheckCircle,
@@ -21,11 +22,20 @@ import {
   Download,
   Filter,
   Shield,
+  Sparkles,
   TrendingUp,
   Users
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { DateRange } from "react-day-picker";
+
+// Import AI components
+import {
+  AIInsightsCard,
+  AIStatusIndicator,
+  ComprehensiveAIAnalysis,
+  ExecutiveReportCard
+} from "@/components/ai-reports/AIReportComponents";
 
 interface ComplianceStats {
   totalEntries: number;
@@ -207,7 +217,8 @@ export const ReportsComponent = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-2 justify-end">
+      <div className="flex items-center gap-4 justify-between">
+        <AIStatusIndicator />
         <Button onClick={exportData} variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
           Export CSV
@@ -336,6 +347,18 @@ export const ReportsComponent = () => {
           <TabsTrigger value="violations">Violations</TabsTrigger>
           <TabsTrigger value="rooms">Room Analysis</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          <TabsTrigger value="ai-insights" className="flex items-center gap-2">
+            <Brain className="h-4 w-4" />
+            AI Insights
+          </TabsTrigger>
+          <TabsTrigger value="ai-analysis" className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            AI Analysis
+          </TabsTrigger>
+          <TabsTrigger value="executive-report" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Executive Report
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -499,6 +522,21 @@ export const ReportsComponent = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* AI Insights Tab */}
+        <TabsContent value="ai-insights" className="space-y-4">
+          <AIInsightsCard />
+        </TabsContent>
+
+        {/* AI Analysis Tab */}
+        <TabsContent value="ai-analysis" className="space-y-4">
+          <ComprehensiveAIAnalysis />
+        </TabsContent>
+
+        {/* Executive Report Tab */}
+        <TabsContent value="executive-report" className="space-y-4">
+          <ExecutiveReportCard />
         </TabsContent>
       </Tabs>
 

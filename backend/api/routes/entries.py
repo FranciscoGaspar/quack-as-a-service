@@ -12,6 +12,15 @@ from utils.s3_uploader import upload_image_bytes_to_s3
 from PIL import Image
 import io
 
+# AI Analytics imports
+try:
+    from services.bedrock_analytics import bedrock_nlp
+    AI_ANALYTICS_AVAILABLE = True
+    print("✅ AWS Bedrock Analytics service loaded")
+except ImportError as e:
+    print(f"⚠️  AWS Bedrock Analytics not available: {e}")
+    AI_ANALYTICS_AVAILABLE = False
+
 # Optional ML dependencies - import only if available
 try:
     import image_detection
@@ -401,3 +410,303 @@ async def get_room_entries(
         return [_add_computed_fields(entry) for entry in entries]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# AI-POWERED ANALYTICS ENDPOINTS
+# ============================================================================
+
+@router.get("/ai/status")
+async def get_ai_status():
+    """
+    Get AI service status and configuration.
+    """
+    if not AI_ANALYTICS_AVAILABLE:
+        return {
+            "status": "unavailable",
+            "service": "AWS Bedrock Analytics",
+            "reason": "Service not available",
+            "is_initialized": False,
+            "capabilities": []
+        }
+    
+    try:
+        # Get service status
+        is_initialized = bedrock_nlp.is_initialized
+        
+        return {
+            "status": "success",
+            "service": "AWS Bedrock Analytics",
+            "model": bedrock_nlp.model_id,
+            "region": bedrock_nlp.region_name,
+            "is_initialized": is_initialized,
+            "capabilities": [
+                "compliance_insights",
+                "executive_reports", 
+                "anomaly_analysis",
+                "quick_insights"
+            ] if is_initialized else []
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "service": "AWS Bedrock Analytics",
+            "error": str(e),
+            "is_initialized": False,
+            "capabilities": []
+        }
+
+
+@router.get("/ai/insights")
+async def get_ai_insights(
+    insight_type: str = Query("comprehensive", regex="^(comprehensive|executive|anomaly|trend)$"),
+    limit: Optional[int] = Query(100, ge=10, le=500, description="Number of entries to analyze")
+):
+    """
+    Get AI-powered compliance insights using AWS Bedrock.
+    
+    Generates intelligent analysis of compliance data including:
+    - Executive summary
+    - Key findings and patterns
+    - Risk assessment
+    - Actionable recommendations
+    """
+    if not AI_ANALYTICS_AVAILABLE:
+        raise HTTPException(
+            status_code=503, 
+            detail="AI Analytics service not available. Please check AWS Bedrock configuration."
+        )
+    
+    try:
+        # Get entries for analysis
+        entries = PersonalEntryService.get_all(limit=limit)
+        
+        if len(entries) < 5:
+            raise HTTPException(
+                status_code=400,
+                detail="Need at least 5 entries for AI analysis"
+            )
+        
+        # Generate AI insights
+        insight = await bedrock_nlp.generate_compliance_insights(entries, insight_type)
+        
+        return {
+            "status": "success",
+            "insight": {
+                "type": insight.insight_type,
+                "title": insight.title,
+                "summary": insight.summary,
+                "detailed_analysis": insight.detailed_analysis,
+                "key_findings": insight.key_findings,
+                "recommendations": insight.recommendations,
+                "risk_level": insight.risk_level,
+                "confidence_score": insight.confidence_score,
+                "generated_at": insight.generated_at.isoformat(),
+                "data_period": insight.data_period
+            },
+            "data_summary": {
+                "entries_analyzed": len(entries),
+                "analysis_type": insight_type,
+                "ai_service": "AWS Bedrock"
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI analysis failed: {str(e)}")
+
+
+@router.get("/ai/executive-report")
+async def get_executive_report(
+    limit: Optional[int] = Query(200, ge=20, le=1000, description="Number of entries to analyze")
+):
+    """
+    Generate comprehensive executive compliance report using AI.
+    
+    Provides:
+    - Executive summary
+    - Compliance overview with metrics
+    - Trend analysis
+    - Risk assessment
+    - Strategic action items
+    """
+    if not AI_ANALYTICS_AVAILABLE:
+        raise HTTPException(
+            status_code=503, 
+            detail="AI Analytics service not available. Please check AWS Bedrock configuration."
+        )
+    
+    try:
+        # Get entries for analysis
+        entries = PersonalEntryService.get_all(limit=limit)
+        
+        if len(entries) < 20:
+            raise HTTPException(
+                status_code=400,
+                detail="Need at least 20 entries for executive report"
+            )
+        
+        # Generate executive report
+        report = await bedrock_nlp.generate_executive_report(entries)
+        
+        return {
+            "status": "success",
+            "report": {
+                "executive_summary": report.executive_summary,
+                "compliance_overview": report.compliance_overview,
+                "trend_analysis": report.trend_analysis,
+                "risk_assessment": report.risk_assessment,
+                "action_items": report.action_items,
+                "generated_at": report.generated_at.isoformat()
+            },
+            "metadata": {
+                "entries_analyzed": len(entries),
+                "report_type": "executive",
+                "ai_service": "AWS Bedrock"
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Executive report generation failed: {str(e)}")
+
+
+@router.post("/ai/anomaly-analysis")
+async def analyze_anomalies(
+    anomalies: List[dict],
+    limit: Optional[int] = Query(100, ge=10, le=500, description="Number of entries to analyze")
+):
+    """
+    Analyze detected anomalies using AI.
+    
+    Provides intelligent analysis of compliance anomalies including:
+    - Root cause analysis
+    - Impact assessment
+    - Mitigation strategies
+    - Immediate actions required
+    """
+    if not AI_ANALYTICS_AVAILABLE:
+        raise HTTPException(
+            status_code=503, 
+            detail="AI Analytics service not available. Please check AWS Bedrock configuration."
+        )
+    
+    try:
+        if not anomalies:
+            raise HTTPException(
+                status_code=400,
+                detail="No anomalies provided for analysis"
+            )
+        
+        # Get entries for context
+        entries = PersonalEntryService.get_all(limit=limit)
+        
+        if len(entries) < 5:
+            raise HTTPException(
+                status_code=400,
+                detail="Need at least 5 entries for anomaly analysis"
+            )
+        
+        # Generate anomaly analysis
+        insight = await bedrock_nlp.generate_anomaly_analysis(entries, anomalies)
+        
+        return {
+            "status": "success",
+            "analysis": {
+                "type": insight.insight_type,
+                "title": insight.title,
+                "summary": insight.summary,
+                "detailed_analysis": insight.detailed_analysis,
+                "key_findings": insight.key_findings,
+                "recommendations": insight.recommendations,
+                "risk_level": insight.risk_level,
+                "confidence_score": insight.confidence_score,
+                "generated_at": insight.generated_at.isoformat(),
+                "data_period": insight.data_period
+            },
+            "anomaly_summary": {
+                "total_anomalies": len(anomalies),
+                "entries_analyzed": len(entries),
+                "analysis_type": "anomaly",
+                "ai_service": "AWS Bedrock"
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Anomaly analysis failed: {str(e)}")
+
+@router.get("/ai/quick-insights")
+async def get_quick_insights(
+    limit: Optional[int] = Query(50, ge=5, le=200, description="Number of entries to analyze")
+):
+    """
+    Get quick AI insights for dashboard display.
+    
+    Provides concise AI analysis suitable for dashboard widgets:
+    - Brief summary
+    - Key metrics
+    - Top recommendations
+    - Risk level
+    """
+    if not AI_ANALYTICS_AVAILABLE:
+        return {
+            "status": "unavailable",
+            "message": "AI service not available",
+            "fallback_data": {
+                "summary": "AI insights not available",
+                "risk_level": "unknown",
+                "recommendations": ["Configure AWS Bedrock for AI insights"]
+            }
+        }
+    
+    try:
+        # Get recent entries
+        entries = PersonalEntryService.get_all(limit=limit)
+        
+        if len(entries) < 5:
+            return {
+                "status": "insufficient_data",
+                "message": "Need at least 5 entries for analysis",
+                "fallback_data": {
+                    "summary": "Insufficient data for analysis",
+                    "risk_level": "unknown",
+                    "recommendations": ["Collect more compliance data"]
+                }
+            }
+        
+        # Generate quick insights
+        insight = await bedrock_nlp.generate_compliance_insights(entries, "comprehensive")
+        
+        return {
+            "status": "success",
+            "quick_insights": {
+                "summary": insight.summary,
+                "risk_level": insight.risk_level,
+                "confidence": insight.confidence_score,
+                "top_recommendations": insight.recommendations[:3],  # Top 3 only
+                "key_findings": insight.key_findings[:3],  # Top 3 only
+                "generated_at": insight.generated_at.isoformat()
+            },
+            "data_summary": {
+                "entries_analyzed": len(entries),
+                "analysis_type": "quick_insights"
+            }
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Quick insights generation failed: {str(e)}",
+            "fallback_data": {
+                "summary": "Analysis failed",
+                "risk_level": "unknown",
+                "recommendations": ["Check AI service configuration"]
+            }
+        }
+
+
