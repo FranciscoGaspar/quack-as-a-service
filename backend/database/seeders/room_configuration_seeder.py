@@ -41,10 +41,8 @@ class RoomEquipmentConfigurationSeeder(BaseSeeder):
                         "mask": "required",
                         "gloves": "required", 
                         "hairnet": "required",
-                        "safety_glasses": "recommended",
-                        "hard_hat": "required"
                     },
-                    "entry_threshold": 5.0,  # All required items must be present
+                    "entry_threshold": 5.0,
                     "description": "Production Floor - High safety requirements for manufacturing operations",
                     "is_active": True
                 },
@@ -52,10 +50,9 @@ class RoomEquipmentConfigurationSeeder(BaseSeeder):
                     "room_name": "assembly-line",
                     "equipment_weights": {
                         "gloves": "required",
-                        "hairnet": "required",
-                        "safety_glasses": "recommended"
+                        "hairnet": "recommended",
                     },
-                    "entry_threshold": 5.0,  # Required items must be present
+                    "entry_threshold": 5.0,
                     "description": "Assembly Line - Moderate safety requirements for assembly operations",
                     "is_active": True
                 },
@@ -63,113 +60,9 @@ class RoomEquipmentConfigurationSeeder(BaseSeeder):
                     "room_name": "packaging-area",
                     "equipment_weights": {
                         "gloves": "required",
-                        "hairnet": "recommended"
                     },
-                    "entry_threshold": 5.0,  # Gloves required, hairnet recommended
+                    "entry_threshold": 5.0,
                     "description": "Packaging Area - Basic hygiene requirements for packaging operations",
-                    "is_active": True
-                },
-                {
-                    "room_name": "quality-control-lab",
-                    "equipment_weights": {
-                        "mask": "required",
-                        "gloves": "required",
-                        "hairnet": "required",
-                        "safety_glasses": "required",
-                        "safety_vest": "recommended"
-                    },
-                    "entry_threshold": 5.0,  # All required items must be present
-                    "description": "Quality Control Lab - Strict contamination control requirements",
-                    "is_active": True
-                },
-                {
-                    "room_name": "maintenance-workshop",
-                    "equipment_weights": {
-                        "hard_hat": "required",
-                        "safety_glasses": "required",
-                        "gloves": "required",
-                        "safety_vest": "required",
-                        "boots": "required"
-                    },
-                    "entry_threshold": 5.0,  # All required safety equipment
-                    "description": "Maintenance Workshop - Full PPE required for equipment maintenance",
-                    "is_active": True
-                },
-                {
-                    "room_name": "warehouse-storage",
-                    "equipment_weights": {
-                        "hard_hat": "required",
-                        "safety_vest": "required",
-                        "boots": "required"
-                    },
-                    "entry_threshold": 5.0,  # Basic safety equipment required
-                    "description": "Warehouse Storage - Basic safety equipment for material handling",
-                    "is_active": True
-                },
-                {
-                    "room_name": "chemical-processing",
-                    "equipment_weights": {
-                        "mask": "required",
-                        "gloves": "required",
-                        "hairnet": "required",
-                        "safety_glasses": "required",
-                        "safety_vest": "required",
-                        "boots": "required"
-                    },
-                    "entry_threshold": 5.0,  # Full PPE required
-                    "description": "Chemical Processing - Maximum safety requirements for chemical handling",
-                    "is_active": True
-                },
-                {
-                    "room_name": "clean-room",
-                    "equipment_weights": {
-                        "mask": "required",
-                        "gloves": "required",
-                        "hairnet": "required",
-                        "safety_glasses": "required",
-                        "safety_vest": "required"
-                    },
-                    "entry_threshold": 5.0,  # Full contamination control
-                    "description": "Clean Room - Strict contamination control for sensitive manufacturing",
-                    "is_active": True
-                },
-                {
-                    "room_name": "loading-dock",
-                    "equipment_weights": {
-                        "hard_hat": "required",
-                        "safety_vest": "required",
-                        "boots": "required"
-                    },
-                    "entry_threshold": 5.0,  # Basic safety for loading operations
-                    "description": "Loading Dock - Basic safety equipment for material loading/unloading",
-                    "is_active": True
-                },
-                {
-                    "room_name": "office-area",
-                    "equipment_weights": {
-                        "mask": "recommended"
-                    },
-                    "entry_threshold": 0.0,  # No strict requirements
-                    "description": "Office Area - Minimal requirements, mask recommended for health",
-                    "is_active": True
-                },
-                {
-                    "room_name": "break-room",
-                    "equipment_weights": {
-                        "mask": "recommended"
-                    },
-                    "entry_threshold": 0.0,  # No strict requirements
-                    "description": "Break Room - Minimal requirements, mask recommended for health",
-                    "is_active": True
-                },
-                {
-                    "room_name": "training-room",
-                    "equipment_weights": {
-                        "mask": "recommended",
-                        "safety_glasses": "recommended"
-                    },
-                    "entry_threshold": 0.0,  # No strict requirements
-                    "description": "Training Room - Minimal requirements, safety equipment recommended for demonstrations",
                     "is_active": True
                 }
             ]
