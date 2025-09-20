@@ -12,14 +12,23 @@ model_id = "IDEA-Research/grounding-dino-base"
 device = "cuda" if torch.cuda.is_available() else "cpu"
 processor = None
 model = None
+_model_initialized = False
 
 def initialize_model():
-    """Initialize the model and processor"""
-    global processor, model
-    if processor is None or model is None:
+    """Initialize the model and processor with caching"""
+    global processor, model, _model_initialized
+    if not _model_initialized:
+        print("🤖 Loading ML model (first time only)...")
         processor = AutoProcessor.from_pretrained(model_id)
         model = AutoModelForZeroShotObjectDetection.from_pretrained(model_id).to(device)
+        model.eval()  # Set to evaluation mode for inference
+        _model_initialized = True
+        print("✅ ML model loaded and ready")
     return processor, model
+
+def is_model_ready():
+    """Check if model is already initialized"""
+    return _model_initialized and processor is not None and model is not None
 
 def detect_objects_in_image(image, text_queries, threshold=0.32):
     """
@@ -69,6 +78,69 @@ def detect_objects_in_image(image, text_queries, threshold=0.32):
         filtered_results.append(filtered_result)
     
     return filtered_results
+
+def detect_equipment_and_body_parts(image, equipment_queries="a mask. a glove. a hairnet.", threshold=0.32):
+    """
+    Optimized function to detect both equipment and body parts in a single model call.
+    This reduces the number of model inferences from 2 to 1.
+    
+    Args:
+        image: PIL Image object
+        equipment_queries: String with equipment queries
+        threshold: Detection threshold
+    
+    Returns:
+        Tuple of (equipment_results, body_parts_results)
+    """
+    # Combine all queries into a single detection call
+    combined_queries = f"{equipment_queries} a head. a hand. hands."
+    
+    # Single model inference
+    all_results = detect_objects_in_image(image, combined_queries, threshold)
+    
+    # Separate equipment and body parts results
+    equipment_results = []
+    body_parts_results = []
+    
+    for result in all_results:
+        eq_boxes, eq_scores, eq_labels = [], [], []
+        bp_boxes, bp_scores, bp_labels = [], [], []
+        
+        for box, score, label in zip(result['boxes'], result['scores'], result['labels']):
+            label_lower = label.lower().strip()
+            
+            # Categorize detections
+            if any(item in label_lower for item in ['mask', 'glove', 'hairnet']):
+                eq_boxes.append(box)
+                eq_scores.append(score)
+                eq_labels.append(label)
+            elif any(item in label_lower for item in ['head', 'hand']):
+                bp_boxes.append(box)
+                bp_scores.append(score)
+                bp_labels.append(label)
+        
+        # Create separate result objects
+        if eq_boxes:
+            equipment_results.append({
+                'boxes': eq_boxes,
+                'scores': eq_scores,
+                'labels': eq_labels
+            })
+        
+        if bp_boxes:
+            body_parts_results.append({
+                'boxes': bp_boxes,
+                'scores': bp_scores,
+                'labels': bp_labels
+            })
+    
+    # Ensure we always return at least empty results
+    if not equipment_results:
+        equipment_results = [{'boxes': [], 'scores': [], 'labels': []}]
+    if not body_parts_results:
+        body_parts_results = [{'boxes': [], 'scores': [], 'labels': []}]
+    
+    return equipment_results, body_parts_results
 
 def combine_detection_results(all_results):
     """
@@ -400,34 +472,148 @@ def _draw_detection_annotations(ax, image, results, text_queries, missing_items)
                 fontsize=14, weight='bold')
     ax.axis('off')
 
+def _draw_detection_annotations_optimized(ax, image, results, text_queries, missing_items, body_parts_results=None):
+    """
+    Optimized version of the drawing function that reuses body parts detection if available.
+    """
+    # Define specific colors for each item type
+    item_colors = {
+        'glove': 'orange',
+        'gloves': 'orange',
+        'mask': 'blue',
+        'masks': 'blue',
+        'hairnet': 'white',
+        'hairnets': 'white'
+    }
+    
+    # Draw equipment detection boxes
+    for result in results:
+        boxes = result['boxes']
+        scores = result['scores']
+        labels = result['labels']
+        
+        for i, (box, score, label) in enumerate(zip(boxes, scores, labels)):
+            # Convert box coordinates (x1, y1, x2, y2) to matplotlib format
+            x1, y1, x2, y2 = box
+            width = x2 - x1
+            height = y2 - y1
+            
+            # Determine color based on label
+            label_lower = label.lower().strip()
+            color = 'red'  # Default color
+            
+            # Check for specific item types
+            for item_type, item_color in item_colors.items():
+                if item_type in label_lower:
+                    color = item_color
+                    break
+            
+            # Create rectangle patch
+            rect = patches.Rectangle((x1, y1), width, height, 
+                                   linewidth=2, edgecolor=color, facecolor='none')
+            ax.add_patch(rect)
+            
+            # Add label and confidence score
+            ax.text(x1, y1-5, f'{label}: {score:.3f}', 
+                   fontsize=10, color=color, weight='bold',
+                   bbox=dict(boxstyle="round,pad=0.32", facecolor='white', alpha=0.8))
+    
+    # Use provided body parts results or detect them
+    if body_parts_results is None:
+        # Fallback: detect body parts if not provided
+        image_width, image_height = image.size
+        body_parts_query = "a head. a hand. hands."
+        body_parts_results = detect_objects_in_image(image, body_parts_query, threshold=0.3)
+    
+    # Extract detected body parts
+    detected_heads = []
+    detected_hands = []
+    
+    for result in body_parts_results:
+        for box, score, label in zip(result['boxes'], result['scores'], result['labels']):
+            label_lower = label.lower().strip()
+            if 'head' in label_lower:
+                detected_heads.append((box, score))
+            elif 'hand' in label_lower:
+                detected_hands.append((box, score))
+    
+    # Add red squares for missing items (simplified version)
+    image_width, image_height = image.size
+    
+    for missing_item in missing_items:
+        missing_lower = missing_item.lower().strip()
+        
+        if 'mask' in missing_lower or 'hairnet' in missing_lower:
+            if detected_heads:
+                # Use the highest confidence head detection
+                best_head = max(detected_heads, key=lambda x: x[1])
+                head_box = best_head[0]
+                
+                # Convert box coordinates
+                if hasattr(head_box, 'cpu'):
+                    head_box = head_box.cpu().numpy()
+                x1, y1, x2, y2 = head_box
+                
+                # Draw red square around detected head
+                head_square = patches.Rectangle((x1, y1), x2-x1, y2-y1, 
+                                              linewidth=3, edgecolor='red', facecolor='none')
+                ax.add_patch(head_square)
+                ax.text(x1, y1-15, f'MISSING {missing_item.upper()}', 
+                       fontsize=10, color='red', weight='bold',
+                       bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
+        
+        if 'glove' in missing_lower:
+            if detected_hands:
+                # Draw red squares around detected hands
+                for i, (hand_box, score) in enumerate(detected_hands[:2]):  # Limit to 2 hands
+                    # Convert box coordinates
+                    if hasattr(hand_box, 'cpu'):
+                        hand_box = hand_box.cpu().numpy()
+                    x1, y1, x2, y2 = hand_box
+                    
+                    # Draw red square around detected hand
+                    hand_square = patches.Rectangle((x1, y1), x2-x1, y2-y1, 
+                                                  linewidth=3, edgecolor='red', facecolor='none')
+                    ax.add_patch(hand_square)
+                
+                ax.text(image_width/2, image_height * 0.8, 'MISSING HAND PROTECTION', 
+                       fontsize=10, color='red', weight='bold', ha='center',
+                       bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
 
-def create_annotated_image(image, results, text_queries, missing_items):
+    # Add title
+    ax.set_title(f'Object Detection Results\nQueries: {", ".join(text_queries)}\nMissing items: {", ".join(missing_items)}', 
+                fontsize=14, weight='bold')
+    ax.axis('off')
+
+
+def create_annotated_image(image, results, text_queries, missing_items, body_parts_results=None):
     """
     Create an annotated image with detection boxes and return as bytes.
-    Reuses the existing visualization logic from visualize_detections.
+    Optimized version that reuses body parts detection if available.
     
     Args:
         image: PIL Image object
         results: Detection results from the model
         text_queries: List of text queries used for detection
         missing_items: List of missing items
+        body_parts_results: Optional pre-computed body parts results
         
     Returns:
         bytes: Annotated image as bytes for S3 upload
     """
-    # Create matplotlib figure and axis
-    fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+    # Create matplotlib figure and axis with smaller size for faster processing
+    fig, ax = plt.subplots(1, 1, figsize=(10, 6))
     
     try:
         # Display the image and draw annotations
         ax.imshow(image)
-        _draw_detection_annotations(ax, image, results, text_queries, missing_items)
+        _draw_detection_annotations_optimized(ax, image, results, text_queries, missing_items, body_parts_results)
         
-        # Save to bytes instead of showing
+        # Save to bytes with optimized settings
         from io import BytesIO
         img_buffer = BytesIO()
         plt.tight_layout()
-        plt.savefig(img_buffer, format='png', bbox_inches='tight', dpi=150)
+        plt.savefig(img_buffer, format='png', bbox_inches='tight', dpi=100)  # Reduced DPI for speed
         img_buffer.seek(0)
         image_bytes = img_buffer.getvalue()
         plt.close(fig)  # Important: close the figure to free memory
@@ -437,6 +623,57 @@ def create_annotated_image(image, results, text_queries, missing_items):
     except Exception as e:
         plt.close(fig)  # Make sure to close figure even if there's an error
         raise e
+
+def create_simple_annotated_image(image, results, missing_items):
+    """
+    Create a lightweight annotated image without matplotlib overhead.
+    Uses PIL directly for faster processing when detailed annotations aren't needed.
+    
+    Args:
+        image: PIL Image object
+        results: Detection results from the model
+        missing_items: List of missing items
+        
+    Returns:
+        bytes: Simple annotated image as bytes
+    """
+    from PIL import ImageDraw, ImageFont
+    import io
+    
+    # Create a copy of the image
+    annotated_image = image.copy()
+    draw = ImageDraw.Draw(annotated_image)
+    
+    try:
+        # Try to load a font, fallback to default if not available
+        font = ImageFont.truetype("/System/Library/Fonts/Arial.ttf", 20)
+    except:
+        font = ImageFont.load_default()
+    
+    # Draw detection boxes
+    for result in results:
+        for box, score, label in zip(result['boxes'], result['scores'], result['labels']):
+            # Convert box coordinates
+            if hasattr(box, 'cpu'):
+                box = box.cpu().numpy()
+            x1, y1, x2, y2 = box
+            
+            # Draw rectangle
+            draw.rectangle([x1, y1, x2, y2], outline='blue', width=2)
+            
+            # Draw label
+            draw.text((x1, y1-25), f'{label}: {score:.2f}', fill='blue', font=font)
+    
+    # Add missing items text
+    if missing_items:
+        missing_text = f"Missing: {', '.join(missing_items)}"
+        draw.text((10, 10), missing_text, fill='red', font=font)
+    
+    # Convert to bytes
+    img_buffer = io.BytesIO()
+    annotated_image.save(img_buffer, format='PNG')
+    img_buffer.seek(0)
+    return img_buffer.getvalue()
 
 
 def visualize_detections(image, results, text_queries, missing_items):

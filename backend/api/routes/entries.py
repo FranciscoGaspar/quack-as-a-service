@@ -17,6 +17,16 @@ try:
     import image_detection
     ML_DEPENDENCIES_AVAILABLE = True
     print("✅ ML dependencies loaded - image detection enabled")
+    
+    # Pre-initialize model on startup for faster first request
+    try:
+        print("🚀 Pre-loading ML model for faster first request...")
+        image_detection.initialize_model()
+        print("✅ ML model pre-loaded successfully")
+    except Exception as e:
+        print(f"⚠️  Could not pre-load ML model: {e}")
+        print("💡 Model will be loaded on first request (slower)")
+        
 except ImportError as e:
     print(f"⚠️  ML dependencies not available - image detection disabled: {e}")
     print("💡 To enable image detection, install: pip install torch torchvision transformers")
@@ -145,7 +155,8 @@ async def delete_entry(entry_id: int):
 async def upload_image_and_analyze(
     image: UploadFile = File(..., description="Image file to analyze"),
     room_name: str = Form(..., description="Room name"),
-    user_id: int = Form(..., description="User ID")
+    user_id: int = Form(..., description="User ID"),
+    create_annotated: bool = Form(True, description="Whether to create annotated image (slower but more detailed)")
 ):
     """
     Upload an image, analyze it for security equipment, store in S3, and create database entry.
@@ -185,23 +196,30 @@ async def upload_image_and_analyze(
         # Initialize the detection model and perform analysis
         if ML_DEPENDENCIES_AVAILABLE:
             try:
-                print("🤖 Initializing AI detection model...")
-                image_detection.initialize_model()
+                # Check if model is already loaded (faster)
+                if not image_detection.is_model_ready():
+                    print("🤖 Loading AI detection model...")
+                    image_detection.initialize_model()
+                else:
+                    print("🤖 Using pre-loaded AI detection model")
                 
                 print(f"🔍 Analyzing image for safety equipment...")
                 print(f"   Detection queries: {text_queries}")
                 print(f"   Threshold: {detection_threshold}")
                 
-                # Perform object detection
-                detection_results = image_detection.detect_objects_in_image(
+                # Use optimized combined detection (single model call)
+                equipment_results, body_parts_results = image_detection.detect_equipment_and_body_parts(
                     image=pil_image,
-                    text_queries=text_queries,
+                    equipment_queries=text_queries,
                     threshold=detection_threshold
                 )
                 
                 # Analyze detection results for compliance
                 required_items = ['mask', 'glove', 'hairnet']
-                analysis = image_detection.analyze_detection_results(detection_results, required_items)
+                analysis = image_detection.analyze_detection_results(equipment_results, required_items)
+                
+                # Store results for later use
+                detection_results = equipment_results
                 
             except Exception as e:
                 print(f"❌ Error during image detection: {e}")
@@ -213,6 +231,7 @@ async def upload_image_and_analyze(
                     'missing_items': ['mask', 'glove', 'hairnet']
                 }
                 detection_results = [{'boxes': [], 'scores': [], 'labels': []}]
+                body_parts_results = [{'boxes': [], 'scores': [], 'labels': []}]
         else:
             print("⚠️  Image detection skipped - ML dependencies not available")
             print("📸 Image uploaded successfully, but equipment detection is disabled")
@@ -224,6 +243,7 @@ async def upload_image_and_analyze(
                 'missing_items': ['mask', 'glove', 'hairnet']
             }
             detection_results = [{'boxes': [], 'scores': [], 'labels': []}]
+            body_parts_results = [{'boxes': [], 'scores': [], 'labels': []}]
         
         # Create analysis result in expected format
         analysis_result = {
@@ -238,15 +258,18 @@ async def upload_image_and_analyze(
         
         # Create annotated image with detection boxes for S3 upload
         try:
-            if ML_DEPENDENCIES_AVAILABLE:
+            if ML_DEPENDENCIES_AVAILABLE and create_annotated:
                 print("📸 Creating annotated image with detection boxes...")
                 # Parse text_queries to get individual items for visualization
                 required_items = ['mask', 'glove', 'hairnet']
+                
+                # Use optimized annotation creation with pre-computed body parts
                 annotated_image_bytes = image_detection.create_annotated_image(
                     image=pil_image,
                     results=detection_results,
                     text_queries=required_items,
-                    missing_items=analysis['missing_items']
+                    missing_items=analysis['missing_items'],
+                    body_parts_results=body_parts_results  # Reuse pre-computed results
                 )
                 
                 # Generate filename for annotated image
@@ -255,6 +278,21 @@ async def upload_image_and_analyze(
                 # Upload annotated image to S3
                 image_url = upload_image_bytes_to_s3(annotated_image_bytes, annotated_filename)
                 print(f"✅ Annotated image created and uploaded successfully")
+            elif ML_DEPENDENCIES_AVAILABLE and not create_annotated:
+                # Use fast simple annotation
+                print("📸 Creating simple annotated image...")
+                annotated_image_bytes = image_detection.create_simple_annotated_image(
+                    image=pil_image,
+                    results=detection_results,
+                    missing_items=analysis['missing_items']
+                )
+                
+                # Generate filename for annotated image
+                annotated_filename = f"simple_{image.filename}" if image.filename else "simple_image.png"
+                
+                # Upload annotated image to S3
+                image_url = upload_image_bytes_to_s3(annotated_image_bytes, annotated_filename)
+                print(f"✅ Simple annotated image created and uploaded successfully")
             else:
                 # Fallback: upload original image if ML not available
                 print("📸 Uploading original image (ML not available for annotation)")
