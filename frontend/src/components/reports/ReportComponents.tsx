@@ -339,8 +339,8 @@ export const ReportsComponent = () => {
       </div>
 
       {/* Detailed Analytics */}
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
+      <Tabs defaultValue="overview" className="space-y-4 grid w-full">
+        <TabsList className="w-full">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="violations">Violations</TabsTrigger>
           <TabsTrigger value="rooms">Room Analysis</TabsTrigger>

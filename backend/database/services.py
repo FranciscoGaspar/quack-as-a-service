@@ -113,7 +113,13 @@ class PersonalEntryService:
         """Get entry by ID"""
         session = create_session()
         try:
-            return session.query(PersonalEntry).options(joinedload(PersonalEntry.emotional_analysis)).get(entry_id)
+            entry = session.query(PersonalEntry).options(
+                joinedload(PersonalEntry.emotional_analysis),
+                joinedload(PersonalEntry.user)
+            ).get(entry_id)
+            if entry:
+                session.expunge(entry)
+            return entry
         finally:
             session.close()
     
@@ -122,10 +128,16 @@ class PersonalEntryService:
         """Get all entries, optionally limited"""
         session = create_session()
         try:
-            query = session.query(PersonalEntry).options(joinedload(PersonalEntry.emotional_analysis)).order_by(desc(PersonalEntry.entered_at))
+            query = session.query(PersonalEntry).options(
+                joinedload(PersonalEntry.emotional_analysis),
+                joinedload(PersonalEntry.user)
+            ).order_by(desc(PersonalEntry.entered_at))
             if limit:
                 query = query.limit(limit)
-            return query.all()
+            entries = query.all()
+            # Detach objects from session to avoid lazy loading issues
+            session.expunge_all()
+            return entries
         finally:
             session.close()
     
@@ -134,10 +146,15 @@ class PersonalEntryService:
         """Get all entries with user relationships eagerly loaded (for AI analysis)"""
         session = create_session()
         try:
-            query = session.query(PersonalEntry).options(joinedload(PersonalEntry.user)).order_by(desc(PersonalEntry.entered_at))
+            query = session.query(PersonalEntry).options(
+                joinedload(PersonalEntry.user),
+                joinedload(PersonalEntry.emotional_analysis)
+            ).order_by(desc(PersonalEntry.entered_at))
             if limit:
                 query = query.limit(limit)
-            return query.all()
+            entries = query.all()
+            session.expunge_all()
+            return entries
         finally:
             session.close()
     
@@ -146,10 +163,15 @@ class PersonalEntryService:
         """Get all entries for a specific user"""
         session = create_session()
         try:
-            query = session.query(PersonalEntry).options(joinedload(PersonalEntry.emotional_analysis)).filter_by(user_id=user_id).order_by(desc(PersonalEntry.entered_at))
+            query = session.query(PersonalEntry).options(
+                joinedload(PersonalEntry.emotional_analysis),
+                joinedload(PersonalEntry.user)
+            ).filter_by(user_id=user_id).order_by(desc(PersonalEntry.entered_at))
             if limit:
                 query = query.limit(limit)
-            return query.all()
+            entries = query.all()
+            session.expunge_all()
+            return entries
         finally:
             session.close()
     
@@ -158,10 +180,15 @@ class PersonalEntryService:
         """Get all entries for a specific room"""
         session = create_session()
         try:
-            query = session.query(PersonalEntry).options(joinedload(PersonalEntry.emotional_analysis)).filter_by(room_name=room_name).order_by(desc(PersonalEntry.entered_at))
+            query = session.query(PersonalEntry).options(
+                joinedload(PersonalEntry.emotional_analysis),
+                joinedload(PersonalEntry.user)
+            ).filter_by(room_name=room_name).order_by(desc(PersonalEntry.entered_at))
             if limit:
                 query = query.limit(limit)
-            return query.all()
+            entries = query.all()
+            session.expunge_all()
+            return entries
         finally:
             session.close()
     
@@ -218,11 +245,15 @@ class PersonalEntryService:
         """Recalculate approval status for an existing entry"""
         session = create_session()
         try:
-            entry = session.query(PersonalEntry).get(entry_id)
+            entry = session.query(PersonalEntry).options(
+                joinedload(PersonalEntry.emotional_analysis),
+                joinedload(PersonalEntry.user)
+            ).get(entry_id)
             if entry:
                 entry.calculate_and_set_approval_status()
                 session.commit()
                 session.refresh(entry)
+                session.expunge(entry)
             return entry
         finally:
             session.close()

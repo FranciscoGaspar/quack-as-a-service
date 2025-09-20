@@ -141,6 +141,10 @@ python example_usage.py     # Test database SDK
 curl http://localhost:8000/health
 curl http://localhost:8000/users
 curl http://localhost:8000/entries
+
+# API Seed
+python seed_custom.py --clean --all 6
+
 ```
 
 ## 📚 API Documentation
