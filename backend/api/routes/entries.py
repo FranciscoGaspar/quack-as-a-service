@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 
 from database.services import UserService, PersonalEntryService
 from utils.s3_uploader import upload_image_bytes_to_s3
+from core.room_equipment_config import RoomEquipmentConfig
 from PIL import Image
 import io
 
@@ -44,11 +45,23 @@ def _add_computed_fields(entry) -> PersonalEntryResponse:
     # First validate with base schema (no computed fields)
     base_data = PersonalEntryBaseResponse.model_validate(entry)
     
+    # Fetch user name if user_id is present
+    user_name = None
+    if entry.user_id:
+        try:
+            user = UserService.get_by_id(entry.user_id)
+            if user:
+                user_name = user.name
+        except Exception as e:
+            print(f"⚠️  Could not fetch user name for user_id {entry.user_id}: {e}")
+            user_name = None
+    
     # Then create full response with computed fields
     return PersonalEntryResponse(
         **base_data.model_dump(),
         is_compliant=entry.is_compliant(),
-        missing_equipment=entry.get_missing_equipment()
+        missing_equipment=entry.get_missing_equipment(),
+        user_name=user_name
     )
 
 
@@ -198,9 +211,15 @@ async def upload_image_and_analyze(
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Invalid image format: {str(e)}")
         
-        # Define detection parameters
-        text_queries = "a mask. a glove. a hairnet."
+        # Get room-specific detection parameters
+        text_queries = RoomEquipmentConfig.get_detection_queries(room_name)
+        required_equipment = RoomEquipmentConfig.get_required_equipment(room_name)
         detection_threshold = 0.4
+        
+        print(f"🏠 Room: {room_name}")
+        print(f"📋 Required equipment: {required_equipment}")
+        print(f"🔍 Detection queries: {text_queries}")
+        print(f"📊 Room description: {RoomEquipmentConfig.get_room_description(room_name)}")
         
         # Initialize the detection model and perform analysis
         if ML_DEPENDENCIES_AVAILABLE:
@@ -223,9 +242,8 @@ async def upload_image_and_analyze(
                     threshold=detection_threshold
                 )
                 
-                # Analyze detection results for compliance
-                required_items = ['mask', 'glove', 'hairnet']
-                analysis = image_detection.analyze_detection_results(equipment_results, required_items)
+                # Analyze detection results for compliance using room-specific requirements
+                analysis = image_detection.analyze_detection_results(equipment_results, required_equipment)
                 
                 # Store results for later use
                 detection_results = equipment_results
@@ -237,7 +255,7 @@ async def upload_image_and_analyze(
                     'total_detected': 0,
                     'compliance_status': False,
                     'found_items': {},
-                    'missing_items': ['mask', 'glove', 'hairnet']
+                    'missing_items': required_equipment
                 }
                 detection_results = [{'boxes': [], 'scores': [], 'labels': []}]
                 body_parts_results = [{'boxes': [], 'scores': [], 'labels': []}]
@@ -249,7 +267,7 @@ async def upload_image_and_analyze(
                 'total_detected': 0,
                 'compliance_status': False,  # Assume non-compliant when can't detect
                 'found_items': {},
-                'missing_items': ['mask', 'glove', 'hairnet']
+                'missing_items': required_equipment
             }
             detection_results = [{'boxes': [], 'scores': [], 'labels': []}]
             body_parts_results = [{'boxes': [], 'scores': [], 'labels': []}]
