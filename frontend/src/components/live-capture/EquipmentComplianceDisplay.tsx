@@ -43,11 +43,11 @@ export const EquipmentComplianceDisplay = ({
 
   return (
     <Dialog onOpenChange={setShowComplianceDialog} open={showComplianceDialog}>
-      <DialogContent className="max-w-7xl h-[90vh] flex flex-col">
+      <DialogContent className="!max-w-2xl h-[90vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>
             <div className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
+              <Shield />
               Equipment Compliance Report
             </div>
           </DialogTitle>
@@ -85,20 +85,16 @@ export const EquipmentComplianceDisplay = ({
           </Card>
 
           {/* Captured Image */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Captured Image</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex justify-center">
-                <img
-                  alt="Equipment compliance check"
-                  className="max-w-full h-auto rounded-lg border"
-                  src={image_url}
-                />
-              </div>
-            </CardContent>
-          </Card>
+          <div>
+            <p className="font-bold">Captured Image</p>
+            <div className="flex justify-center">
+              <img
+                alt="Equipment compliance check"
+                className="max-w-full h-auto rounded-lg"
+                src={image_url}
+              />
+            </div>
+          </div>
 
           {/* Equipment Status */}
           <Card>
