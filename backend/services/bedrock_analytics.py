@@ -285,8 +285,57 @@ class BedrockNLPanalytics:
             logger.error(f"❌ Failed to generate executive report: {e}")
             return self._create_fallback_report(f"Error: {str(e)}")
     
+    async def generate_custom_analysis(self, entries: List[PersonalEntry], user_prompt: str) -> AIInsight:
+        """Generate AI analysis based on user's custom prompt/question."""
+        if not self.is_initialized or not self.bedrock_client:
+            return self._create_fallback_insight("AWS Bedrock not available")
+        
+        try:
+            # Prepare data for analysis
+            analysis_data = self._prepare_analysis_data(entries)
+            
+            # Create custom prompt for user's question
+            prompt = self._create_custom_analysis_prompt(analysis_data, user_prompt)
+            
+            # Call Bedrock API
+            ai_response = self._invoke_model(prompt, max_tokens=2000, temperature=0.3)
+            
+            # Extract structured insights
+            insight = self._parse_custom_response(ai_response, analysis_data, user_prompt)
+            
+            logger.info("✅ Custom AI analysis generated successfully using AWS Bedrock")
+            return insight
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to generate custom AI analysis: {e}")
+            return self._create_fallback_insight(f"Error: {str(e)}")
+    
+    async def generate_quick_answer(self, entries: List[PersonalEntry], question: str) -> str:
+        """Generate a quick answer to a user's question about compliance data."""
+        if not self.is_initialized or not self.bedrock_client:
+            return "AI service not available. Please check AWS Bedrock configuration."
+        
+        try:
+            # Prepare basic data
+            analysis_data = self._prepare_analysis_data(entries)
+            
+            # Create quick answer prompt
+            prompt = self._create_quick_answer_prompt(analysis_data, question)
+            
+            # Call Bedrock API with shorter response
+            ai_response = self._invoke_model(prompt, max_tokens=500, temperature=0.3)
+            
+            # Clean and return the response
+            cleaned_response = self._clean_response(ai_response)
+            
+            logger.info("✅ Quick AI answer generated successfully")
+            return cleaned_response
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to generate quick answer: {e}")
+            return f"Sorry, I couldn't process your question. Error: {str(e)}"
+    
     async def generate_anomaly_analysis(self, entries: List[PersonalEntry], anomalies: List[Dict]) -> AIInsight:
-        """Generate AI analysis of detected anomalies using AWS Bedrock."""
         if not self.is_initialized or not self.bedrock_client:
             return self._create_fallback_insight("AWS Bedrock not available")
         
@@ -527,6 +576,153 @@ IMPORTANT: Return ONLY valid JSON without any markdown formatting, code blocks, 
 """
         
         return prompt
+    
+    def _create_custom_analysis_prompt(self, data: Dict[str, Any], user_prompt: str) -> str:
+        """Create prompt for custom user analysis."""
+        prompt = f"""You are an expert safety compliance analyst. A user has asked a specific question about their compliance data.
+
+USER'S QUESTION: "{user_prompt}"
+
+COMPLIANCE DATA CONTEXT:
+- Total Entries: {data['total_entries']}
+- Compliance Rate: {data['compliance_rate']:.1f}%
+- Analysis Period: {data['analysis_period']}
+- Data Quality: {data['data_quality']}
+
+EQUIPMENT VIOLATIONS:
+"""
+        
+        for equipment, stats in data['equipment_violations'].items():
+            prompt += f"- {stats['label']}: {stats['violation_rate']:.1f}% violation rate ({stats['violations']}/{stats['total']} entries)\n"
+        
+        prompt += f"""
+HOURLY COMPLIANCE PATTERNS:
+"""
+        
+        # Add top 3 worst hours
+        worst_hours = sorted(data['hourly_compliance'].items(), key=lambda x: x[1]['compliance_rate'])[:3]
+        for hour, stats in worst_hours:
+            prompt += f"- {hour}:00 - {stats['compliance_rate']:.1f}% compliance ({stats['entries']} entries)\n"
+        
+        prompt += f"""
+ROOM PERFORMANCE:
+"""
+        
+        for room, stats in data['room_performance'].items():
+            prompt += f"- {room}: {stats['compliance_rate']:.1f}% compliance ({stats['entries']} entries)\n"
+        
+        prompt += f"""
+
+Please answer the user's question: "{user_prompt}"
+
+Provide a comprehensive analysis that directly addresses their question, including:
+1. Direct answer to their question
+2. Supporting data and evidence
+3. Key insights relevant to their question
+4. Actionable recommendations if applicable
+5. Risk assessment if relevant
+
+Format your response as structured JSON with these fields:
+- summary (direct answer to their question)
+- key_findings (array of relevant insights)
+- risk_level (if applicable)
+- recommendations (array of actionable items)
+- confidence_score (0-100%)
+
+IMPORTANT: Return ONLY valid JSON without any markdown formatting, code blocks, or additional text. Do not wrap the response in ```json``` or any other formatting.
+"""
+        
+        return prompt
+    
+    def _create_quick_answer_prompt(self, data: Dict[str, Any], question: str) -> str:
+        """Create prompt for quick answer."""
+        prompt = f"""You are a safety compliance expert. Answer this question concisely based on the compliance data:
+
+QUESTION: "{question}"
+
+DATA SUMMARY:
+- Total Entries: {data['total_entries']}
+- Compliance Rate: {data['compliance_rate']:.1f}%
+- Analysis Period: {data['analysis_period']}
+
+EQUIPMENT ISSUES:
+"""
+        
+        for equipment, stats in data['equipment_violations'].items():
+            if stats['violation_rate'] > 0:
+                prompt += f"- {stats['label']}: {stats['violation_rate']:.1f}% violations\n"
+        
+        prompt += f"""
+
+Provide a concise, direct answer to the user's question. Be specific and use the actual data numbers. 
+Keep your response under 200 words and focus on the most important points.
+
+Do not use markdown formatting or code blocks. Just provide a clear, direct answer.
+"""
+        
+        return prompt
+    
+    def _parse_custom_response(self, response: str, data: Dict[str, Any], user_prompt: str) -> AIInsight:
+        """Parse custom AI response into structured insight."""
+        try:
+            # Clean the response - remove markdown code blocks
+            cleaned_response = self._clean_response(response)
+            
+            # Try to extract JSON from response
+            json_start = cleaned_response.find('{')
+            json_end = cleaned_response.rfind('}') + 1
+            
+            if json_start != -1 and json_end != -1:
+                json_str = cleaned_response[json_start:json_end]
+                parsed = json.loads(json_str)
+                
+                return AIInsight(
+                    insight_type="custom_analysis",
+                    title=f"Custom Analysis: {user_prompt[:50]}...",
+                    summary=parsed.get('summary', 'Analysis completed'),
+                    detailed_analysis=cleaned_response,
+                    key_findings=parsed.get('key_findings', []),
+                    recommendations=parsed.get('recommendations', []),
+                    risk_level=parsed.get('risk_level', 'medium'),
+                    confidence_score=parsed.get('confidence_score', 75),
+                    generated_at=datetime.now(),
+                    data_period=data.get('analysis_period', 'Unknown'),
+                    model_used=self.model_id
+                )
+            else:
+                # Fallback if no JSON found
+                return AIInsight(
+                    insight_type="custom_analysis",
+                    title=f"Custom Analysis: {user_prompt[:50]}...",
+                    summary="Analysis completed",
+                    detailed_analysis=cleaned_response,
+                    key_findings=["Analysis completed successfully"],
+                    recommendations=["Review detailed analysis for specific recommendations"],
+                    risk_level="medium",
+                    confidence_score=70,
+                    generated_at=datetime.now(),
+                    data_period=data.get('analysis_period', 'Unknown'),
+                    model_used=self.model_id
+                )
+                
+        except Exception as e:
+            logger.error(f"Failed to parse custom AI response: {e}")
+            return self._create_fallback_insight(f"Parsing error: {str(e)}")
+    
+    def _clean_response(self, response: str) -> str:
+        """Clean AI response by removing markdown formatting."""
+        cleaned_response = response.strip()
+        
+        # Remove ```json and ``` markers if present
+        if cleaned_response.startswith('```json'):
+            cleaned_response = cleaned_response[7:]  # Remove ```json
+        elif cleaned_response.startswith('```'):
+            cleaned_response = cleaned_response[3:]  # Remove ```
+        
+        if cleaned_response.endswith('```'):
+            cleaned_response = cleaned_response[:-3]  # Remove trailing ```
+        
+        return cleaned_response.strip()
     
     def _parse_ai_response(self, response: str, data: Dict[str, Any], insight_type: str) -> AIInsight:
         """Parse AI response into structured insight."""

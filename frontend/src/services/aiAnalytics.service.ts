@@ -51,6 +51,27 @@ export interface AnomalyData {
   room?: string;
 }
 
+export interface CustomAnalysisResponse {
+  status: string;
+  analysis?: AIInsight;
+  user_prompt: string;
+  data_summary?: {
+    entries_analyzed: number;
+    analysis_type: string;
+    ai_service: string;
+  };
+}
+
+export interface QuickAnswerResponse {
+  status: string;
+  question: string;
+  answer: string;
+  data_summary?: {
+    entries_analyzed: number;
+    analysis_type: string;
+  };
+}
+
 class AIAnalyticsService {
   private baseUrl: string;
 
@@ -180,6 +201,42 @@ class AIAnalyticsService {
       method: 'POST',
       body: JSON.stringify(anomalies),
     });
+  }
+
+  // Custom Analysis - New NLP Feature
+  async generateCustomAnalysis(userPrompt: string, limit: number = 100): Promise<CustomAnalysisResponse> {
+    const formData = new FormData();
+    formData.append('user_prompt', userPrompt);
+    formData.append('limit', limit.toString());
+
+    const response = await fetch(`${this.baseUrl}/entries/ai/custom-analysis`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  // Quick Answer - New NLP Feature
+  async getQuickAnswer(question: string, limit: number = 50): Promise<QuickAnswerResponse> {
+    const formData = new FormData();
+    formData.append('question', question);
+    formData.append('limit', limit.toString());
+
+    const response = await fetch(`${this.baseUrl}/entries/ai/quick-answer`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    return await response.json();
   }
 }
 

@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
-// AI Insights Card Component
+
 export const AIInsightsCard = () => {
   const { data: quickInsights, isLoading, error, refetch } = useQuickInsights();
   const [isRefreshing, setIsRefreshing] = useState(false);

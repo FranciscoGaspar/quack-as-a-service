@@ -105,6 +105,34 @@ export const useAnomalyAnalysis = () => {
   });
 };
 
+// Hook for custom analysis (mutation) - New NLP Feature
+export const useCustomAnalysis = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ userPrompt, limit }: { userPrompt: string; limit?: number }) => 
+      aiAnalyticsService.generateCustomAnalysis(userPrompt, limit || 100),
+    onSuccess: () => {
+      // Invalidate related queries
+      queryClient.invalidateQueries({ queryKey: ['ai'] });
+    },
+  });
+};
+
+// Hook for quick answer (mutation) - New NLP Feature
+export const useQuickAnswer = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ question, limit }: { question: string; limit?: number }) => 
+      aiAnalyticsService.getQuickAnswer(question, limit || 50),
+    onSuccess: () => {
+      // Invalidate related queries
+      queryClient.invalidateQueries({ queryKey: ['ai'] });
+    },
+  });
+};
+
 // Hook to refresh all AI data
 export const useRefreshAIData = () => {
   const queryClient = useQueryClient();
