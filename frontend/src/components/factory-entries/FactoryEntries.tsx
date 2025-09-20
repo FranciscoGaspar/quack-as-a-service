@@ -1,6 +1,8 @@
 "use client";
 
+import { DataTable } from "@/components/dataTable/DataTable";
 import { ErrorAlert } from "@/components/ErrorAlert";
+import { columns } from "@/components/factory-entries/columns";
 import { useFactoryEntries } from "@/hooks/factory-entries/useFactoryEntries";
 
 const LoadingFactoryEntries = () => {
@@ -26,5 +28,5 @@ export const FactoryEntries = () => {
     return <EmptyFactoryEntries />;
   }
 
-  return <pre>{JSON.stringify(factoryEntries, null, 4)}</pre>;
+  return <DataTable columns={columns} data={factoryEntries} />;
 };

@@ -1,11 +1,11 @@
 import axiosInstance from "@/lib/axiosClient";
 
-type FactoryEntries = {
+export type FactoryEntries = {
   room_name: string;
   equipment: Record<string, boolean>;
   image_url: string;
-  id: number;
-  user_id: number;
+  id: string;
+  user_id: string;
   entered_at: Date;
   created_at: Date;
   is_compliant: boolean;
@@ -15,4 +15,8 @@ type FactoryEntries = {
 export const GetFactoryEntries = async () => {
   const { data } = await axiosInstance<FactoryEntries[]>("/entries");
   return data;
+};
+
+export const DeleteFactoryEntry = async (id: string) => {
+  await axiosInstance(`/entries/${id}`, { method: "DELETE" });
 };
