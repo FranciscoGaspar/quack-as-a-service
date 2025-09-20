@@ -2,6 +2,7 @@
 
 import { ROUTES } from "@/constants/routes";
 import {
+  CameraIcon,
   DoorOpenIcon,
   LayoutDashboard,
   type LucideIcon,
@@ -46,6 +47,11 @@ const groupRoutes: GroupedRoute[] = [
         icon: DoorOpenIcon,
         title: "Factory Entries",
         url: ROUTES.factoryEntries,
+      },
+      {
+        icon: CameraIcon,
+        title: "Live Capture",
+        url: ROUTES.liveCapture,
       },
     ],
   },
