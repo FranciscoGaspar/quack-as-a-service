@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  AIInsightsCard,
+  AIStatusIndicator,
+  ComprehensiveAIAnalysis,
+  ExecutiveReportCard,
+} from "@/components/ai-reports/AIReportComponents";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -28,14 +34,6 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { DateRange } from "react-day-picker";
-
-// Import AI components
-import {
-  AIInsightsCard,
-  AIStatusIndicator,
-  ComprehensiveAIAnalysis,
-  ExecutiveReportCard
-} from "@/components/ai-reports/AIReportComponents";
 
 interface ComplianceStats {
   totalEntries: number;
@@ -361,7 +359,7 @@ export const ReportsComponent = () => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-4">
+        <TabsContent value="overview" className="space-y-4 h-full">
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>

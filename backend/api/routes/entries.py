@@ -488,6 +488,128 @@ async def get_ai_status():
         }
 
 
+@router.post("/ai/custom-analysis")
+async def generate_custom_analysis(
+    user_prompt: str = Form(..., description="User's question or prompt for AI analysis"),
+    limit: Optional[int] = Query(100, ge=10, le=500, description="Number of entries to analyze")
+):
+    """
+    Generate AI analysis based on user's custom prompt/question.
+    
+    Allows users to ask specific questions about their compliance data and get
+    AI-powered insights tailored to their question.
+    """
+    if not AI_ANALYTICS_AVAILABLE:
+        raise HTTPException(
+            status_code=503, 
+            detail="AI Analytics service not available. Please check AWS Bedrock configuration."
+        )
+    
+    try:
+        if not user_prompt.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="User prompt cannot be empty"
+            )
+        
+        # Get entries for analysis
+        entries = PersonalEntryService.get_all(limit=limit)
+        
+        if len(entries) < 5:
+            raise HTTPException(
+                status_code=400,
+                detail="Need at least 5 entries for AI analysis"
+            )
+        
+        # Generate custom AI analysis
+        insight = await bedrock_nlp.generate_custom_analysis(entries, user_prompt)
+        
+        return {
+            "status": "success",
+            "analysis": {
+                "type": insight.insight_type,
+                "title": insight.title,
+                "summary": insight.summary,
+                "detailed_analysis": insight.detailed_analysis,
+                "key_findings": insight.key_findings,
+                "recommendations": insight.recommendations,
+                "risk_level": insight.risk_level,
+                "confidence_score": insight.confidence_score,
+                "generated_at": insight.generated_at.isoformat(),
+                "data_period": insight.data_period
+            },
+            "user_prompt": user_prompt,
+            "data_summary": {
+                "entries_analyzed": len(entries),
+                "analysis_type": "custom",
+                "ai_service": "AWS Bedrock"
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Custom analysis failed: {str(e)}")
+
+
+@router.post("/ai/quick-answer")
+async def get_quick_answer(
+    question: str = Form(..., description="User's question for quick AI answer"),
+    limit: Optional[int] = Query(50, ge=5, le=200, description="Number of entries to analyze")
+):
+    """
+    Get a quick AI answer to a user's question about compliance data.
+    
+    Provides concise, direct answers to specific questions about compliance patterns,
+    equipment violations, room performance, etc.
+    """
+    if not AI_ANALYTICS_AVAILABLE:
+        return {
+            "status": "unavailable",
+            "message": "AI service not available",
+            "answer": "AI service not available. Please check AWS Bedrock configuration."
+        }
+    
+    try:
+        if not question.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Question cannot be empty"
+            )
+        
+        # Get entries for analysis
+        entries = PersonalEntryService.get_all(limit=limit)
+        
+        if len(entries) < 5:
+            return {
+                "status": "insufficient_data",
+                "message": "Need at least 5 entries for analysis",
+                "answer": "Insufficient data for analysis. Please collect more compliance data."
+            }
+        
+        # Generate quick answer
+        answer = await bedrock_nlp.generate_quick_answer(entries, question)
+        
+        return {
+            "status": "success",
+            "question": question,
+            "answer": answer,
+            "data_summary": {
+                "entries_analyzed": len(entries),
+                "analysis_type": "quick_answer"
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Quick answer generation failed: {str(e)}",
+            "answer": f"Sorry, I couldn't process your question. Error: {str(e)}"
+        }
+
+
 @router.get("/ai/insights")
 async def get_ai_insights(
     insight_type: str = Query("comprehensive", regex="^(comprehensive|executive|anomaly|trend)$"),
@@ -737,6 +859,128 @@ async def get_quick_insights(
                 "risk_level": "unknown",
                 "recommendations": ["Check AI service configuration"]
             }
+        }
+
+
+@router.post("/ai/custom-analysis")
+async def generate_custom_analysis(
+    user_prompt: str = Form(..., description="User's question or prompt for AI analysis"),
+    limit: Optional[int] = Query(100, ge=10, le=500, description="Number of entries to analyze")
+):
+    """
+    Generate AI analysis based on user's custom prompt/question.
+    
+    Allows users to ask specific questions about their compliance data and get
+    AI-powered insights tailored to their question.
+    """
+    if not AI_ANALYTICS_AVAILABLE:
+        raise HTTPException(
+            status_code=503, 
+            detail="AI Analytics service not available. Please check AWS Bedrock configuration."
+        )
+    
+    try:
+        if not user_prompt.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="User prompt cannot be empty"
+            )
+        
+        # Get entries for analysis
+        entries = PersonalEntryService.get_all(limit=limit)
+        
+        if len(entries) < 5:
+            raise HTTPException(
+                status_code=400,
+                detail="Need at least 5 entries for AI analysis"
+            )
+        
+        # Generate custom AI analysis
+        insight = await bedrock_nlp.generate_custom_analysis(entries, user_prompt)
+        
+        return {
+            "status": "success",
+            "analysis": {
+                "type": insight.insight_type,
+                "title": insight.title,
+                "summary": insight.summary,
+                "detailed_analysis": insight.detailed_analysis,
+                "key_findings": insight.key_findings,
+                "recommendations": insight.recommendations,
+                "risk_level": insight.risk_level,
+                "confidence_score": insight.confidence_score,
+                "generated_at": insight.generated_at.isoformat(),
+                "data_period": insight.data_period
+            },
+            "user_prompt": user_prompt,
+            "data_summary": {
+                "entries_analyzed": len(entries),
+                "analysis_type": "custom",
+                "ai_service": "AWS Bedrock"
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Custom analysis failed: {str(e)}")
+
+
+@router.post("/ai/quick-answer")
+async def get_quick_answer(
+    question: str = Form(..., description="User's question for quick AI answer"),
+    limit: Optional[int] = Query(50, ge=5, le=200, description="Number of entries to analyze")
+):
+    """
+    Get a quick AI answer to a user's question about compliance data.
+    
+    Provides concise, direct answers to specific questions about compliance patterns,
+    equipment violations, room performance, etc.
+    """
+    if not AI_ANALYTICS_AVAILABLE:
+        return {
+            "status": "unavailable",
+            "message": "AI service not available",
+            "answer": "AI service not available. Please check AWS Bedrock configuration."
+        }
+    
+    try:
+        if not question.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Question cannot be empty"
+            )
+        
+        # Get entries for analysis
+        entries = PersonalEntryService.get_all(limit=limit)
+        
+        if len(entries) < 5:
+            return {
+                "status": "insufficient_data",
+                "message": "Need at least 5 entries for analysis",
+                "answer": "Insufficient data for analysis. Please collect more compliance data."
+            }
+        
+        # Generate quick answer
+        answer = await bedrock_nlp.generate_quick_answer(entries, question)
+        
+        return {
+            "status": "success",
+            "question": question,
+            "answer": answer,
+            "data_summary": {
+                "entries_analyzed": len(entries),
+                "analysis_type": "quick_answer"
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Quick answer generation failed: {str(e)}",
+            "answer": f"Sorry, I couldn't process your question. Error: {str(e)}"
         }
 
 
