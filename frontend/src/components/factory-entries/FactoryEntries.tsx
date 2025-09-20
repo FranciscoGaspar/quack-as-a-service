@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { DataTable } from '@/components/dataTable/DataTable';
-import { ErrorAlert } from '@/components/ErrorAlert';
-import { columns } from '@/components/factory-entries/columns';
-import { useFactoryEntries } from '@/hooks/factory-entries/useFactoryEntries';
-import { fuzzyFilterFn } from '@/lib/dataTable';
-import { DoorOpen, Loader2 } from 'lucide-react';
+import { DataTable } from "@/components/dataTable/DataTable";
+import { ErrorAlert } from "@/components/ErrorAlert";
+import { columns } from "@/components/factory-entries/columns";
+import { useFactoryEntries } from "@/hooks/factory-entries/useFactoryEntries";
+import { fuzzyFilterFn } from "@/lib/dataTable";
+import { DoorOpen, Loader2 } from "lucide-react";
 
 const LoadingFactoryEntries = () => {
   return (
@@ -52,17 +52,17 @@ export const FactoryEntriesComponent = () => {
       config={{
         filters: {
           search: {
-            placeholder: 'Search',
-            filterFn: fuzzyFilterFn(['room_name']),
+            placeholder: "Search",
+            filterFn: fuzzyFilterFn(["room_name"]),
           },
           filter: [
             {
-              type: 'select',
-              column: 'room_name',
+              type: "select",
+              column: "room_name",
             },
             {
-              type: 'select',
-              column: 'user_name',
+              type: "select",
+              column: "user_name",
             },
           ],
         },

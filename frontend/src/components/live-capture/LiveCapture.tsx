@@ -1,7 +1,6 @@
 "use client";
 
-import { ErrorAlert } from "@/components/ErrorAlert";
-import { Button } from "@/components/ui/button";
+import { CameraFeed } from "@/components/live-capture/CameraFeed";
 import {
   Card,
   CardContent,
@@ -11,187 +10,13 @@ import {
 } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { getRequiredEPIs } from "@/constants/requiredEPIs";
-import { useSendEPI } from "@/hooks/factory-entries/useSendEPI";
-import { useSendQR } from "@/hooks/factory-entries/useSendQR";
-import { cn } from "@/lib/utils";
-import { Loader2, QrCode, Shirt } from "lucide-react";
-import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
-import { EquipmentComplianceDisplay } from "./EquipmentComplianceDisplay";
-
-const LoadingLiveCapture = () => {
-  return (
-    <div className="flex flex-col items-center justify-center gap-4">
-      <Loader2 className="animate-spin text-primary" size={64} />
-      <p className="text-muted-foreground">Loading camera...</p>
-    </div>
-  );
-};
 
 type LiveCaptureProps = {
   location: string;
 };
 
-type UserType = {
-  user_id: string;
-  name: string;
-};
-
 export const LiveCapture = ({ location }: LiveCaptureProps) => {
-  const [idState, setIdState] = useState(0);
-
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  const [isCapturing, setIsCapturing] = useState(false);
-  const [countdown, setCountdown] = useState<number | null>(null);
-
-  // Form state for upload
-  const [user, setUser] = useState<UserType | null>(null);
-
-  const [complianceData, setComplianceData] = useState<any>(null);
-  const [showComplianceDialog, setShowComplianceDialog] = useState(false);
-  const [hideAfterUpload, setHideAfterUpload] = useState(false);
-
-  const { mutateAsync: sendQR, isPending: pendingQR } = useSendQR();
-  const { mutateAsync: sendEPI, isPending: pendingEPI } = useSendEPI();
-
-  const isUploading = pendingQR || pendingEPI;
   const requiredEPIs = getRequiredEPIs(location);
-
-  // Initialize camera
-  // biome-ignore lint/correctness/useExhaustiveDependencies: No Dependencies
-  useEffect(() => {
-    const initCamera = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        const mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            facingMode: "environment",
-          },
-          audio: false,
-        });
-
-        setStream(mediaStream);
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = mediaStream;
-        }
-
-        setIsLoading(false);
-      } catch (err) {
-        console.error("Error accessing camera:", err);
-        setError("Unable to access camera. Please check permissions.");
-        setIsLoading(false);
-      }
-    };
-
-    initCamera();
-
-    // Cleanup on unmount
-    return () => {
-      if (stream) {
-        for (const track of stream.getTracks()) {
-          track.stop();
-        }
-      }
-    };
-  }, []);
-
-  const startCountdown = () => {
-    setIsCapturing(true);
-    setCountdown(3);
-
-    const countdownInterval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev === null || prev <= 1) {
-          clearInterval(countdownInterval);
-          captureImage();
-          return null;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
-
-  const captureImage = () => {
-    if (!videoRef.current || !canvasRef.current) return;
-
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const context = canvas.getContext("2d");
-
-    if (!context) return;
-
-    // Set canvas dimensions to match video
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    // Draw the current video frame to canvas
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    // Convert canvas to image data URL
-    const imageDataUrl = canvas.toDataURL("image/jpeg", 0.8);
-    setCapturedImage(imageDataUrl);
-    setIsCapturing(false);
-    setHideAfterUpload(false); // Reset hide state for new capture
-  };
-
-  const uploadImage = async () => {
-    if (!capturedImage) return;
-
-    const response = await fetch(capturedImage);
-    const blob = await response.blob();
-    const file = new File([blob], "captured-image.jpg", {
-      type: "image/jpeg",
-    });
-
-    const formData = new FormData();
-
-    if (idState === 0) {
-      formData.append("file", file);
-
-      const user = await sendQR(formData);
-      setUser(user);
-      setIdState(1);
-      setCapturedImage(null);
-
-      return;
-    }
-
-    if (idState === 1) {
-      formData.append("image", file);
-      formData.append("room_name", location);
-      formData.append("user_id", user?.user_id ?? "");
-
-      // Upload to backend
-      const data = await sendEPI(formData);
-      // Store compliance data from response and show dialog
-      if (data) {
-        setComplianceData(data);
-        setShowComplianceDialog(true);
-        setHideAfterUpload(true);
-        setCapturedImage(null);
-        setIdState(0);
-        setUser(null);
-      }
-    }
-  };
-
-  if (isLoading) {
-    return <LoadingLiveCapture />;
-  }
-
-  if (error) {
-    return <ErrorAlert />;
-  }
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
@@ -214,92 +39,8 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
           })}
         </CardContent>
       </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            {idState === 0 && (
-              <>
-                <QrCode />
-                Show your QR Code
-              </>
-            )}
-            {idState === 1 && (
-              <>
-                <Shirt />
-                Show your EPIs
-              </>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="relative">
-            {capturedImage && (
-              <Image
-                alt="Captured"
-                className="max-w-full h-auto rounded-lg scale-x-[-1]"
-                height={720}
-                src={capturedImage}
-                unoptimized
-                width={1280}
-              />
-            )}
-            <video
-              autoPlay
-              className={cn(
-                "w-full h-auto rounded-lg scale-x-[-1]",
-                !capturedImage ? "block" : "hidden",
-              )}
-              muted
-              playsInline
-              ref={videoRef}
-            />
-            <canvas className="hidden" ref={canvasRef} />
 
-            {/* Countdown overlay */}
-            {countdown !== null && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
-                <div className="text-8xl font-bold text-white animate-pulse">
-                  {countdown}
-                </div>
-              </div>
-            )}
-
-            {user !== null && (
-              <div className="absolute inset-0 h-32 p-4">
-                <div className="absolute flex p-4 bg-black/50 rounded-lg">
-                  <div className="text-3xl font-bold text-white animate-pulse">
-                    {user.name}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="flex justify-center mt-4 gap-4">
-            <Button disabled={isCapturing} onClick={startCountdown} size="lg">
-              {isCapturing ? "Capturing..." : "Take Photo"}
-            </Button>
-
-            {capturedImage && !hideAfterUpload && (
-              <Button disabled={isUploading} onClick={uploadImage} size="lg">
-                {isUploading ? (
-                  <Loader2 className="animate-spin mr-2 text-white" />
-                ) : (
-                  "Upload Image"
-                )}
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {complianceData && (
-        <EquipmentComplianceDisplay
-          complianceData={complianceData}
-          setShowComplianceDialog={setShowComplianceDialog}
-          showComplianceDialog={showComplianceDialog}
-        />
-      )}
+      <CameraFeed location={location} />
     </div>
   );
 };
