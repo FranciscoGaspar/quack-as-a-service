@@ -1,13 +1,11 @@
-'use client';
+"use client";
 
-import { DataTable } from '@/components/dataTable/DataTable';
-import { ErrorAlert } from '@/components/ErrorAlert';
-import { createColumns } from '@/components/factory-entries/columns';
-import { EquipmentComplianceDisplay } from '@/components/live-capture/EquipmentComplianceDisplay';
-import { useFactoryEntries } from '@/hooks/factory-entries/useFactoryEntries';
-import { DoorOpen, Loader2 } from 'lucide-react';
-import type { FactoryEntries } from '@/services/factoryEntries.service';
-import { useState } from 'react';
+import { DataTable } from "@/components/dataTable/DataTable";
+import { ErrorAlert } from "@/components/ErrorAlert";
+import { columns } from "@/components/factory-entries/columns";
+import { useFactoryEntries } from "@/hooks/factory-entries/useFactoryEntries";
+import { fuzzyFilterFn } from "@/lib/dataTable";
+import { DoorOpen, Loader2 } from "lucide-react";
 
 const LoadingFactoryEntries = () => {
   return (
@@ -35,15 +33,6 @@ const EmptyFactoryEntries = () => {
 
 export const FactoryEntriesComponent = () => {
   const { data: factoryEntries, isLoading } = useFactoryEntries();
-  const [selectedEntry, setSelectedEntry] = useState<FactoryEntries | null>(
-    null,
-  );
-  const [showComplianceDialog, setShowComplianceDialog] = useState(false);
-
-  const handleViewCompliance = (entry: FactoryEntries) => {
-    setSelectedEntry(entry);
-    setShowComplianceDialog(true);
-  };
 
   if (isLoading) {
     return <LoadingFactoryEntries />;
@@ -58,18 +47,27 @@ export const FactoryEntriesComponent = () => {
   }
 
   return (
-    <>
-      <DataTable
-        columns={createColumns(handleViewCompliance)}
-        data={factoryEntries}
-      />
-      {selectedEntry && (
-        <EquipmentComplianceDisplay
-          complianceData={selectedEntry}
-          showComplianceDialog={showComplianceDialog}
-          setShowComplianceDialog={setShowComplianceDialog}
-        />
-      )}
-    </>
+    <DataTable
+      columns={columns}
+      config={{
+        filters: {
+          search: {
+            placeholder: "Search",
+            filterFn: fuzzyFilterFn(["room_name"]),
+          },
+          filter: [
+            {
+              type: "select",
+              column: "room_name",
+            },
+            {
+              type: "select",
+              column: "user_id",
+            },
+          ],
+        },
+      }}
+      data={factoryEntries}
+    />
   );
 };
