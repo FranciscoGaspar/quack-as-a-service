@@ -53,6 +53,16 @@ const groupRoutes: GroupedRoute[] = [
         title: "Factory Entries",
         url: ROUTES.factoryEntries,
       },
+      {
+        icon: CameraIcon,
+        title: "Reports",
+        url: ROUTES.reports,
+      },
+      {
+        icon: MessageSquareIcon,
+        title: "Ask AI",
+        url: ROUTES.aiChat,
+      },
     ],
   },
   {
@@ -74,23 +84,19 @@ const groupRoutes: GroupedRoute[] = [
         title: "Packaging Area",
         url: ROUTES.liveCapture("packaging-area"),
       },
-      {
-        icon: CameraIcon,
-        title: "Reports",
-        url: ROUTES.reports,
-      },
-      {
-        icon: MessageSquareIcon,
-        title: "Ask AI",
-        url: ROUTES.aiChat,
-      },
+    ],
+  },
+  {
+    key: "settings",
+    label: "Settings",
+    items: [
       {
         icon: Settings,
         title: "Room Configurations",
         url: ROUTES.roomConfigurations,
       },
     ],
-  },
+  }
 ];
 
 const isActive = (routeUrl: string, currentPath: string) => {
