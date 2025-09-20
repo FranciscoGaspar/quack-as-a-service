@@ -9,6 +9,7 @@ import {
   type LucideIcon,
   MessageSquareIcon,
   PackageOpenIcon,
+  Settings,
   ShieldIcon
 } from "lucide-react";
 import Image from "next/image";
@@ -82,6 +83,11 @@ const groupRoutes: GroupedRoute[] = [
         icon: MessageSquareIcon,
         title: "Ask AI",
         url: ROUTES.aiChat,
+      },
+      {
+        icon: Settings,
+        title: "Room Configurations",
+        url: ROUTES.roomConfigurations,
       },
     ],
   },

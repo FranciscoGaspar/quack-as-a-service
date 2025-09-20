@@ -5,4 +5,5 @@ export const ROUTES = {
   liveCapture: (id: string) => `/${id}/live-capture`,
   reports: "/reports",
   aiChat: "/ai-chat",
+  roomConfigurations: "/room-configurations",
 } as const;
