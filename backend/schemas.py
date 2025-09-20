@@ -57,6 +57,10 @@ class PersonalEntryBaseResponse(PersonalEntryBase):
     """Base schema for personal entry response (without computed fields)."""
     id: int
     user_id: Optional[int]
+    # New approval fields
+    is_approved: Optional[bool] = Field(None, description="Entry approval status (True=approved, False=denied, None=pending)")
+    equipment_score: Optional[float] = Field(None, description="Equipment compliance score (0-100)")
+    approval_reason: Optional[str] = Field(None, description="Reason for approval/denial decision")
     entered_at: datetime
     created_at: datetime
 
@@ -94,3 +98,51 @@ class ImageUploadRequest(BaseModel):
     """Schema for image upload request."""
     room_name: str = Field(..., min_length=1, max_length=100, description="Room name")
     user_id: int = Field(..., description="User ID (required)")
+
+
+# Room Equipment Configuration Schemas
+class RoomEquipmentConfigurationBase(BaseModel):
+    """Base schema for room equipment configuration."""
+    room_name: str = Field(..., min_length=1, max_length=100, description="Room name")
+    equipment_weights: Dict[str, str] = Field(..., description="Equipment requirement levels (e.g., {'mask': 'required', 'gloves': 'recommended'})")
+    entry_threshold: float = Field(70.0, ge=0, le=100, description="Minimum score required for entry approval (0-100)")
+    description: Optional[str] = Field(None, max_length=500, description="Room configuration description")
+    is_active: bool = Field(True, description="Whether this configuration is active")
+
+
+class RoomEquipmentConfigurationCreate(RoomEquipmentConfigurationBase):
+    """Schema for creating a room equipment configuration."""
+    pass
+
+
+class RoomEquipmentConfigurationUpdate(BaseModel):
+    """Schema for updating a room equipment configuration."""
+    equipment_weights: Optional[Dict[str, float]] = Field(None, description="Equipment weights")
+    entry_threshold: Optional[float] = Field(None, ge=0, le=100, description="Minimum score for entry approval")
+    description: Optional[str] = Field(None, max_length=500, description="Room configuration description")
+    is_active: Optional[bool] = Field(None, description="Whether this configuration is active")
+
+
+class RoomEquipmentConfigurationResponse(RoomEquipmentConfigurationBase):
+    """Schema for room equipment configuration response."""
+    id: int
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+# Enhanced schemas for approval status display
+class ApprovalStatusDisplay(BaseModel):
+    """Schema for displaying approval status information."""
+    status: str = Field(..., description="Human-readable approval status (Approved/Denied/Pending)")
+    color: str = Field(..., description="Color for status badge (green/red/yellow)")
+    score: Optional[float] = Field(None, description="Equipment compliance score")
+    threshold: Optional[float] = Field(None, description="Required threshold for approval")
+    reason: Optional[str] = Field(None, description="Approval/denial reason")
+
+
+class PersonalEntryWithApprovalStatus(PersonalEntryResponse):
+    """Enhanced entry response with approval status display information."""
+    approval_status: ApprovalStatusDisplay = Field(..., description="Approval status display information")
