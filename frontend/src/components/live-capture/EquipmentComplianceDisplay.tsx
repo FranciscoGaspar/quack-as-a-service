@@ -34,6 +34,7 @@ const equipmentLabels: Record<string, string> = {
   boots: "Safety Boots",
   hairnet: "Hair Net",
   hard_hat: "Hard Hat",
+  gloves: "Gloves",
   left_glove: "Left Glove",
   right_glove: "Right Glove",
   safety_vest: "Safety Vest",
@@ -80,8 +81,6 @@ export const EquipmentComplianceDisplay = ({ complianceData }: EquipmentComplian
         </CardContent>
       </Card>
 
-      {/* Image and Equipment Status */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Captured Image */}
         <Card>
           <CardHeader>
@@ -145,7 +144,6 @@ export const EquipmentComplianceDisplay = ({ complianceData }: EquipmentComplian
             </div>
           </CardContent>
         </Card>
-      </div>
     </div>
   );
 };
