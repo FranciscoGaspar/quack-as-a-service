@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertTriangle, CheckCircle, Shield, XCircle } from "lucide-react";
 
 interface EquipmentComplianceData {
@@ -27,6 +28,8 @@ interface EquipmentComplianceData {
 
 interface EquipmentComplianceDisplayProps {
   complianceData: EquipmentComplianceData;
+  showComplianceDialog: boolean;
+  setShowComplianceDialog: (show: boolean) => void;
 }
 
 const equipmentLabels: Record<string, string> = {
@@ -41,7 +44,7 @@ const equipmentLabels: Record<string, string> = {
   safety_glasses: "Safety Glasses"
 };
 
-export const EquipmentComplianceDisplay = ({ complianceData }: EquipmentComplianceDisplayProps) => {
+export const EquipmentComplianceDisplay = ({ complianceData, showComplianceDialog, setShowComplianceDialog }: EquipmentComplianceDisplayProps) => {
   const { equipment, image_url, is_compliant, missing_equipment, room_name, entered_at } = complianceData;
 
   const formatDateTime = (dateString: string) => {
@@ -49,6 +52,12 @@ export const EquipmentComplianceDisplay = ({ complianceData }: EquipmentComplian
   };
 
   return (
+    <Dialog open={showComplianceDialog} onOpenChange={setShowComplianceDialog} >
+        <DialogContent className="max-w-7xl max-h-[120vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Equipment Compliance Report</DialogTitle>
+          </DialogHeader>
+          {complianceData && (
     <div className="space-y-6">
       {/* Header Card */}
       <Card>
@@ -145,5 +154,8 @@ export const EquipmentComplianceDisplay = ({ complianceData }: EquipmentComplian
           </CardContent>
         </Card>
     </div>
+    )}
+    </DialogContent>
+  </Dialog>
   );
 };
