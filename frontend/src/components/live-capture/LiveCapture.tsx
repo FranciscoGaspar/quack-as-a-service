@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { getRequiredEPIs } from "@/constants/requiredEPIs";
 import { useSendEPI } from "@/hooks/factory-entries/useSendEPI";
 import { useSendQR } from "@/hooks/factory-entries/useSendQR";
+import { cn } from "@/lib/utils";
 import { Loader2, QrCode, Shirt } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
@@ -138,47 +139,29 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
     setHideAfterUpload(false); // Reset hide state for new capture
   };
 
-  const downloadImage = () => {
-    if (!capturedImage) return;
-
-    const link = document.createElement("a");
-    link.download = `capture-${new Date()
-      .toISOString()
-      .slice(0, 19)
-      .replace(/:/g, "-")}.jpg`;
-    link.href = capturedImage;
-    link.click();
-  };
-
   const uploadImage = async () => {
     if (!capturedImage) return;
 
-    if (idState === 0) {
-      const response = await fetch(capturedImage);
-      const blob = await response.blob();
-      const file = new File([blob], "captured-image.jpg", {
-        type: "image/jpeg",
-      });
+    const response = await fetch(capturedImage);
+    const blob = await response.blob();
+    const file = new File([blob], "captured-image.jpg", {
+      type: "image/jpeg",
+    });
 
-      const formData = new FormData();
+    const formData = new FormData();
+
+    if (idState === 0) {
       formData.append("file", file);
 
       const { user_id } = await sendQR(formData);
       setUserId(user_id);
       setIdState(1);
+      setCapturedImage(null);
 
       return;
     }
 
     if (idState === 1) {
-      const response = await fetch(capturedImage);
-      const blob = await response.blob();
-      const file = new File([blob], "captured-image.jpg", {
-        type: "image/jpeg",
-      });
-
-      // Create FormData for multipart upload
-      const formData = new FormData();
       formData.append("image", file);
       formData.append("room_name", location);
       formData.append("user_id", userId);
@@ -190,6 +173,9 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
         setComplianceData(data);
         setShowComplianceDialog(true);
         setHideAfterUpload(true);
+        setCapturedImage(null);
+        setIdState(0);
+        setUserId("");
       }
     }
   };
@@ -242,7 +228,7 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="relative">
-            {capturedImage && !hideAfterUpload ? (
+            {capturedImage && (
               <Image
                 alt="Captured"
                 className="max-w-full h-auto rounded-lg"
@@ -251,26 +237,26 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
                 unoptimized
                 width={1280}
               />
-            ) : (
-              <>
-                <video
-                  autoPlay
-                  className="w-full h-auto rounded-lg"
-                  muted
-                  playsInline
-                  ref={videoRef}
-                />
-                <canvas className="hidden" ref={canvasRef} />
+            )}
+            <video
+              autoPlay
+              className={cn(
+                "w-full h-auto rounded-lg",
+                !capturedImage ? "block" : "hidden",
+              )}
+              muted
+              playsInline
+              ref={videoRef}
+            />
+            <canvas className="hidden" ref={canvasRef} />
 
-                {/* Countdown overlay */}
-                {countdown !== null && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
-                    <div className="text-8xl font-bold text-white animate-pulse">
-                      {countdown}
-                    </div>
-                  </div>
-                )}
-              </>
+            {/* Countdown overlay */}
+            {countdown !== null && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
+                <div className="text-8xl font-bold text-white animate-pulse">
+                  {countdown}
+                </div>
+              </div>
             )}
           </div>
 
