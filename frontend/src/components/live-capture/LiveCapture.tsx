@@ -1,7 +1,6 @@
 "use client";
 
 import { ErrorAlert } from "@/components/ErrorAlert";
-import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,7 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { getRequiredEPIs } from "@/constants/requiredEPIs";
 import { useSendEPI } from "@/hooks/factory-entries/useSendEPI";
 import { useSendQR } from "@/hooks/factory-entries/useSendQR";
-import { Camera, Download, Loader2, QrCode, Shirt } from "lucide-react";
+import { Loader2, QrCode, Shirt } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { EquipmentComplianceDisplay } from "./EquipmentComplianceDisplay";
@@ -227,103 +226,71 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Camera />
-            Live Camera Feed
+            {idState === 0 && (
+              <>
+                <QrCode />
+                Show your QR Code
+              </>
+            )}
+            {idState === 1 && (
+              <>
+                <Shirt />
+                Show your EPIs
+              </>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {idState === 0 && (
-            <Alert>
-              <QrCode />
-              <AlertTitle>Show your QR Code</AlertTitle>
-            </Alert>
-          )}
-
-          {idState === 1 && (
-            <Alert>
-              <Shirt />
-              <AlertTitle>Show your EPIs</AlertTitle>
-            </Alert>
-          )}
           <div className="relative">
-            <video
-              autoPlay
-              className="w-full h-auto rounded-lg border"
-              muted
-              playsInline
-              ref={videoRef}
-            />
-            <canvas className="hidden" ref={canvasRef} />
-
-            {/* Countdown overlay */}
-            {countdown !== null && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
-                <div className="text-8xl font-bold text-white animate-pulse">
-                  {countdown}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="flex justify-center mt-4 gap-4">
-            <Button
-              className="min-w-32"
-              disabled={isCapturing}
-              onClick={startCountdown}
-              size="lg"
-            >
-              {isCapturing ? "Capturing..." : "Take Photo"}
-            </Button>
-
-            {capturedImage && !hideAfterUpload && (
-              <>
-                <Button
-                  className="min-w-32"
-                  onClick={downloadImage}
-                  size="lg"
-                  variant="outline"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Download
-                </Button>
-                <Button
-                  className="min-w-40"
-                  disabled={isUploading}
-                  onClick={uploadImage}
-                  size="lg"
-                >
-                  {isUploading ? (
-                    <Loader2 className="animate-spin mr-2 text-white" />
-                  ) : (
-                    "Upload Image"
-                  )}
-                </Button>
-              </>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Captured Image Preview */}
-      {capturedImage && !hideAfterUpload && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Captured Image</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex justify-center">
+            {capturedImage && !hideAfterUpload ? (
               <Image
                 alt="Captured"
-                className="max-w-full h-auto rounded-lg border"
+                className="max-w-full h-auto rounded-lg"
                 height={720}
                 src={capturedImage}
                 unoptimized
                 width={1280}
               />
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            ) : (
+              <>
+                <video
+                  autoPlay
+                  className="w-full h-auto rounded-lg"
+                  muted
+                  playsInline
+                  ref={videoRef}
+                />
+                <canvas className="hidden" ref={canvasRef} />
+
+                {/* Countdown overlay */}
+                {countdown !== null && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
+                    <div className="text-8xl font-bold text-white animate-pulse">
+                      {countdown}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="flex justify-center mt-4 gap-4">
+            <Button disabled={isCapturing} onClick={startCountdown} size="lg">
+              {isCapturing ? "Capturing..." : "Take Photo"}
+            </Button>
+
+            {capturedImage && !hideAfterUpload && (
+              <Button disabled={isUploading} onClick={uploadImage} size="lg">
+                {isUploading ? (
+                  <Loader2 className="animate-spin mr-2 text-white" />
+                ) : (
+                  "Upload Image"
+                )}
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {complianceData && (
         <EquipmentComplianceDisplay
