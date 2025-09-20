@@ -8,8 +8,19 @@ from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 
 from database.services import UserService, PersonalEntryService
-from services.image_analysis import ImageAnalysisService
 from utils.s3_uploader import upload_image_bytes_to_s3
+from PIL import Image
+import io
+
+# Optional ML dependencies - import only if available
+try:
+    import image_detection
+    ML_DEPENDENCIES_AVAILABLE = True
+    print("✅ ML dependencies loaded - image detection enabled")
+except ImportError as e:
+    print(f"⚠️  ML dependencies not available - image detection disabled: {e}")
+    print("💡 To enable image detection, install: pip install torch torchvision transformers")
+    ML_DEPENDENCIES_AVAILABLE = False
 from schemas import (
     PersonalEntryCreate, PersonalEntryUpdate, PersonalEntryResponse,
     PersonalEntryBaseResponse, EquipmentUpdate, SuccessResponse
@@ -141,10 +152,10 @@ async def upload_image_and_analyze(
     
     This endpoint:
     1. Receives an image file from the frontend
-    2. Analyzes the image for security equipment (placeholder implementation)
+    2. Analyzes the image for security equipment using AI object detection (mask, gloves, hairnet)
     3. Uploads the image to S3
-    4. Creates a personal entry in the database
-    5. Returns the standard personal entry response
+    4. Creates a personal entry in the database with detected equipment
+    5. Returns the standard personal entry response with compliance status
     """
     try:
         # Validate user exists
@@ -161,24 +172,139 @@ async def upload_image_and_analyze(
         if len(image_bytes) == 0:
             raise HTTPException(status_code=400, detail="Empty image file")
         
-        # Analyze image for security equipment (placeholder)
-        analysis_result = ImageAnalysisService.analyze_image(
-            image_bytes=image_bytes,
-            filename=image.filename
-        )
+        # Convert image bytes to PIL Image for analysis
+        try:
+            pil_image = Image.open(io.BytesIO(image_bytes))
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid image format: {str(e)}")
         
-        # Add timestamp to analysis result
-        analysis_result["analysis_timestamp"] = datetime.now(timezone.utc).isoformat()
+        # Define detection parameters
+        text_queries = "a mask. a glove. a hairnet."
+        detection_threshold = 0.4
         
-        # Upload image to S3 (placeholder - will return None if AWS not configured)
-        image_url = upload_image_bytes_to_s3(image_bytes, image.filename)
-        if not image_url:
-            # For development, we can continue without S3 upload
-            print("Warning: S3 upload failed or not configured. Continuing without image URL.")
-            image_url = "https://quack-as-a-service-bucket.s3.us-east-1.amazonaws.com/gloves.jpg"
+        # Initialize the detection model and perform analysis
+        if ML_DEPENDENCIES_AVAILABLE:
+            try:
+                print("🤖 Initializing AI detection model...")
+                image_detection.initialize_model()
+                
+                print(f"🔍 Analyzing image for safety equipment...")
+                print(f"   Detection queries: {text_queries}")
+                print(f"   Threshold: {detection_threshold}")
+                
+                # Perform object detection
+                detection_results = image_detection.detect_objects_in_image(
+                    image=pil_image,
+                    text_queries=text_queries,
+                    threshold=detection_threshold
+                )
+                
+                # Analyze detection results for compliance
+                required_items = ['mask', 'glove', 'hairnet']
+                analysis = image_detection.analyze_detection_results(detection_results, required_items)
+                
+            except Exception as e:
+                print(f"❌ Error during image detection: {e}")
+                # Continue with empty detection results if AI fails
+                analysis = {
+                    'total_detected': 0,
+                    'compliance_status': False,
+                    'found_items': {},
+                    'missing_items': ['mask', 'glove', 'hairnet']
+                }
+                detection_results = [{'boxes': [], 'scores': [], 'labels': []}]
+        else:
+            print("⚠️  Image detection skipped - ML dependencies not available")
+            print("📸 Image uploaded successfully, but equipment detection is disabled")
+            # Provide default values when ML is not available
+            analysis = {
+                'total_detected': 0,
+                'compliance_status': False,  # Assume non-compliant when can't detect
+                'found_items': {},
+                'missing_items': ['mask', 'glove', 'hairnet']
+            }
+            detection_results = [{'boxes': [], 'scores': [], 'labels': []}]
         
-        # Extract equipment detection from analysis
-        equipment_detected = analysis_result.get("equipment_detected", {})
+        # Create analysis result in expected format
+        analysis_result = {
+            "analysis_timestamp": datetime.now(timezone.utc).isoformat(),
+            "detection_threshold": detection_threshold,
+            "total_detected": analysis['total_detected'],
+            "compliance_status": analysis['compliance_status'],
+            "found_items": analysis['found_items'],
+            "missing_items": analysis['missing_items'],
+            "raw_detection_results": detection_results
+        }
+        
+        # Create annotated image with detection boxes for S3 upload
+        try:
+            if ML_DEPENDENCIES_AVAILABLE:
+                print("📸 Creating annotated image with detection boxes...")
+                # Parse text_queries to get individual items for visualization
+                required_items = ['mask', 'glove', 'hairnet']
+                annotated_image_bytes = image_detection.create_annotated_image(
+                    image=pil_image,
+                    results=detection_results,
+                    text_queries=required_items,
+                    missing_items=analysis['missing_items']
+                )
+                
+                # Generate filename for annotated image
+                annotated_filename = f"annotated_{image.filename}" if image.filename else "annotated_image.png"
+                
+                # Upload annotated image to S3
+                image_url = upload_image_bytes_to_s3(annotated_image_bytes, annotated_filename)
+                print(f"✅ Annotated image created and uploaded successfully")
+            else:
+                # Fallback: upload original image if ML not available
+                print("📸 Uploading original image (ML not available for annotation)")
+                image_url = upload_image_bytes_to_s3(image_bytes, image.filename)
+                
+            if not image_url:
+                # For development, we can continue without S3 upload
+                print("Warning: S3 upload failed or not configured. Continuing without image URL.")
+                image_url = None
+                
+        except Exception as e:
+            print(f"Error creating/uploading annotated image: {e}")
+            print("Falling back to original image upload...")
+            # Fallback to original image if annotation fails
+            image_url = upload_image_bytes_to_s3(image_bytes, image.filename)
+            if not image_url:
+                print("Warning: S3 upload failed or not configured. Continuing without image URL.")
+                image_url = None
+        
+        # Convert detection results to equipment format expected by database
+        equipment_detected = {}
+        
+        # Map detected items to equipment fields
+        for item, details in analysis['found_items'].items():
+            if 'mask' in item.lower():
+                equipment_detected['mask'] = True
+            elif 'glove' in item.lower():
+                equipment_detected['gloves'] = True
+            elif 'hairnet' in item.lower():
+                equipment_detected['hairnet'] = True
+        
+        # Set missing items to False
+        for missing_item in analysis['missing_items']:
+            if 'mask' in missing_item.lower():
+                equipment_detected['mask'] = False
+            elif 'glove' in missing_item.lower():
+                equipment_detected['gloves'] = False
+            elif 'hairnet' in missing_item.lower():
+                equipment_detected['hairnet'] = False
+        
+        print(f"🔍 Image analysis completed:")
+        print(f"   Total detected: {analysis['total_detected']}")
+        print(f"   Compliance: {'✅ COMPLIANT' if analysis['compliance_status'] else '❌ NON-COMPLIANT'}")
+        print(f"   Equipment detected: {equipment_detected}")
+        if analysis['found_items']:
+            for item, details in analysis['found_items'].items():
+                print(f"   ✅ {item}: {details['confidence']:.3f} confidence")
+        if analysis['missing_items']:
+            for item in analysis['missing_items']:
+                print(f"   ❌ {item}: NOT DETECTED")
         
         # Create database entry
         db_entry = PersonalEntryService.create(

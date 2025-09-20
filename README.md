@@ -4,6 +4,8 @@
 
 **A PostgreSQL database system for tracking personal security equipment compliance when entering rooms.**
 
+> 📖 **[Complete Setup Guide →](SETUP.md)** | 🔍 **[API Documentation →](http://localhost:8000/docs)**
+
 ## 🚀 Quick Start
 
 ```bash
