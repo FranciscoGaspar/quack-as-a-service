@@ -85,3 +85,9 @@ class ErrorResponse(BaseModel):
 class SuccessResponse(BaseModel):
     """Schema for success responses."""
     message: str = Field(..., description="Success message")
+
+
+class ImageUploadRequest(BaseModel):
+    """Schema for image upload request."""
+    room_name: str = Field(..., min_length=1, max_length=100, description="Room name")
+    user_id: int = Field(..., description="User ID (required)")

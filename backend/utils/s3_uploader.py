@@ -10,6 +10,7 @@ from datetime import datetime
 import mimetypes
 import uuid
 from dotenv import load_dotenv
+from io import BytesIO
 
 # Load environment variables
 load_dotenv()
@@ -90,6 +91,92 @@ def upload_image_to_s3(file_path: str) -> Optional[str]:
         s3_url = f"https://{bucket_name}.s3.{region}.amazonaws.com/{s3_key}"
 
         print(f"File uploaded successfully to: {s3_url}")
+        return s3_url
+
+    except NoCredentialsError:
+        print("Error: AWS credentials not found.")
+        return None
+    except ClientError as e:
+        print(f"Error uploading file: {e}")
+        return None
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return None
+
+
+def upload_image_bytes_to_s3(image_bytes: bytes, filename: str = None) -> Optional[str]:
+    """
+    Upload image bytes directly to S3 without saving to disk first.
+    
+    Args:
+        image_bytes (bytes): Raw image bytes
+        filename (str): Original filename (optional, used for extension detection)
+        
+    Returns:
+        str: S3 URL of the uploaded file if successful, None otherwise
+    """
+    try:
+        # Load environment variables
+        aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
+        aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+        bucket_name = os.getenv('S3_BUCKET_NAME')
+        region = os.getenv('AWS_REGION', 'us-east-1')
+
+        # Validate environment variables
+        if not all([aws_access_key_id, aws_secret_access_key, bucket_name]):
+            print("Error: Missing required AWS environment variables. Please check your .env file.")
+            return None
+
+        # Determine file extension
+        file_extension = '.jpg'  # Default
+        if filename:
+            _, ext = os.path.splitext(filename)
+            if ext:
+                file_extension = ext
+
+        # Determine content type
+        content_type = 'image/jpeg'  # Default
+        if filename:
+            mime_type, _ = mimetypes.guess_type(filename)
+            if mime_type and mime_type.startswith('image/'):
+                content_type = mime_type
+
+        # Initialize S3 client
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+            region_name=region
+        )
+
+        # Generate random object name
+        random_uuid = str(uuid.uuid4())
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        object_name = f"{random_uuid}_{timestamp}{file_extension}"
+
+        # Create S3 key
+        s3_key = f"uploads/{object_name}"
+
+        # Create BytesIO object from bytes
+        bytes_io = BytesIO(image_bytes)
+
+        # Upload the file
+        extra_args = {
+            'ContentType': content_type,
+            'ContentDisposition': 'inline'
+        }
+
+        s3_client.upload_fileobj(
+            bytes_io,
+            bucket_name,
+            s3_key,
+            ExtraArgs=extra_args
+        )
+
+        # Generate the S3 URL
+        s3_url = f"https://{bucket_name}.s3.{region}.amazonaws.com/{s3_key}"
+
+        print(f"Image bytes uploaded successfully to: {s3_url}")
         return s3_url
 
     except NoCredentialsError:
