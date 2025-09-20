@@ -8,7 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  EmotionalAIAnalysisResponse,
   EmotionalAnalysisSummary,
+  GetEmotionalAIAnalysis,
   GetEmotionalAnalysisSummary
 } from "@/services/emotionalAnalysis.service";
 import {
@@ -91,8 +93,11 @@ const LoadingSkeleton = () => (
 
 export const EmotionalAnalysisComponent = () => {
   const [data, setData] = useState<EmotionalAnalysisSummary | null>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<EmotionalAIAnalysisResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [aiLoading, setAiLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [filters, setFilters] = useState({
     limit: 100,
     emotionFilter: '',
@@ -118,8 +123,23 @@ export const EmotionalAnalysisComponent = () => {
     }
   };
 
+  const fetchAIAnalysis = async () => {
+    try {
+      setAiLoading(true);
+      setAiError(null);
+      
+      const result = await GetEmotionalAIAnalysis(filters.limit);
+      setAiAnalysis(result);
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : 'Failed to fetch AI emotional analysis');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchData();
+    fetchAIAnalysis();
   }, []);
 
   const handleFilterChange = (key: string, value: string) => {
@@ -306,6 +326,138 @@ export const EmotionalAnalysisComponent = () => {
           </CardContent>
         </Card>
       </div>
+
+
+      {/* AI Emotional Analysis */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="h-5 w-5 text-purple-600" />
+              AI Emotional Analysis
+            </CardTitle>
+            <Button 
+              onClick={fetchAIAnalysis} 
+              variant="outline" 
+              size="sm"
+              disabled={aiLoading}
+            >
+              {aiLoading ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Refresh AI Analysis
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {aiError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                {aiError}
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {aiLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-2/3" />
+              </div>
+            </div>
+          ) : aiAnalysis ? (
+            <div className="space-y-6">
+              {/* Summary */}
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-2">Executive Summary</h4>
+                <p className="text-gray-700 leading-relaxed">{aiAnalysis.emotional_analysis.summary}</p>
+              </div>
+
+              {/* Risk Level */}
+              <div className="flex items-center gap-3">
+                <h4 className="font-semibold text-gray-900">Risk Level:</h4>
+                <Badge 
+                  variant={aiAnalysis.emotional_analysis.risk_level.toLowerCase() === 'high' ? 'destructive' : 
+                          aiAnalysis.emotional_analysis.risk_level.toLowerCase() === 'medium' ? 'default' : 'secondary'}
+                  className="font-medium"
+                >
+                  {aiAnalysis.emotional_analysis.risk_level}
+                </Badge>
+                <span className="text-sm text-gray-600">
+                  Confidence: {aiAnalysis.emotional_analysis.confidence_score}%
+                </span>
+              </div>
+
+              {/* Key Findings */}
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-3">Key Findings</h4>
+                <ul className="space-y-2">
+                  {aiAnalysis.emotional_analysis.key_findings.map((finding, index) => (
+                    <li key={index} className="flex items-start gap-2">
+                      <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 flex-shrink-0" />
+                      <span className="text-gray-700">{finding}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Recommendations */}
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-3">Actionable Recommendations</h4>
+                <ul className="space-y-2">
+                  {aiAnalysis.emotional_analysis.recommendations.map((recommendation, index) => (
+                    <li key={index} className="flex items-start gap-2">
+                      <div className="w-2 h-2 bg-green-600 rounded-full mt-2 flex-shrink-0" />
+                      <span className="text-gray-700">{recommendation}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Analysis Metadata */}
+              <div className="pt-4 border-t border-gray-200">
+                <div className="flex items-center justify-between text-sm text-gray-500">
+                  <span>Generated: {new Date(aiAnalysis.emotional_analysis.generated_at).toLocaleString()}</span>
+                  <span>Data Period: {aiAnalysis.emotional_analysis.data_period}</span>
+                  <span>Entries Analyzed: {aiAnalysis.data_summary.entries_analyzed}</span>
+                </div>
+                {aiAnalysis.cache_info && (
+                  <div className="mt-2 flex items-center justify-center">
+                    <Badge 
+                      variant={aiAnalysis.cache_info.cached ? "secondary" : "outline"}
+                      className="text-xs"
+                    >
+                      {aiAnalysis.cache_info.cached ? "📦 Cached" : "🔄 Fresh Analysis"}
+                    </Badge>
+                    <span className="ml-2 text-xs text-gray-500">
+                      Cache expires in {Math.round(aiAnalysis.cache_info.cache_duration_seconds / 60)} minutes
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <Brain className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">AI Analysis Loading...</h3>
+              <p className="text-gray-500 mb-4">
+                AI analysis is being generated automatically. Please wait...
+              </p>
+              <Button onClick={fetchAIAnalysis} variant="outline">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Retry AI Analysis
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Emotion Distribution */}
       {Object.keys(data.summary.emotion_distribution).length > 0 && (

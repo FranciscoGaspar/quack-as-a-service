@@ -6,6 +6,8 @@ from typing import List, Optional
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Form
 from fastapi.responses import JSONResponse
+import hashlib
+import json
 
 from database.services import UserService, PersonalEntryService
 from utils.s3_uploader import upload_image_bytes_to_s3
@@ -56,6 +58,62 @@ from schemas import (
 )
 
 router = APIRouter(prefix="/entries", tags=["Personal Entries"])
+
+# Simple in-memory cache for AI analysis
+ai_analysis_cache = {}
+CACHE_DURATION_SECONDS = 300  # 5 minutes cache
+
+
+def _generate_cache_key(limit: int) -> str:
+    """Generate a cache key for AI analysis based on parameters."""
+    cache_data = {
+        "limit": limit,
+        "endpoint": "emotional_ai_analysis"
+    }
+    cache_string = json.dumps(cache_data, sort_keys=True)
+    return hashlib.md5(cache_string.encode()).hexdigest()
+
+
+def _is_cache_valid(cache_entry: dict) -> bool:
+    """Check if cache entry is still valid."""
+    if not cache_entry:
+        return False
+    
+    cache_time = cache_entry.get("timestamp", 0)
+    current_time = datetime.now(timezone.utc).timestamp()
+    
+    return (current_time - cache_time) < CACHE_DURATION_SECONDS
+
+
+def _get_cached_analysis(cache_key: str) -> Optional[dict]:
+    """Get cached AI analysis if valid."""
+    cache_entry = ai_analysis_cache.get(cache_key)
+    
+    if cache_entry and _is_cache_valid(cache_entry):
+        print(f"🎯 Cache HIT for AI analysis (key: {cache_key[:8]}...)")
+        cached_data = cache_entry.get("data").copy()
+        cached_data["cache_info"] = {
+            "cached": True,
+            "cache_key": cache_key[:8] + "...",
+            "cache_duration_seconds": CACHE_DURATION_SECONDS
+        }
+        return cached_data
+    
+    if cache_entry:
+        print(f"⏰ Cache EXPIRED for AI analysis (key: {cache_key[:8]}...)")
+        # Remove expired entry
+        del ai_analysis_cache[cache_key]
+    
+    return None
+
+
+def _set_cached_analysis(cache_key: str, analysis_data: dict) -> None:
+    """Cache AI analysis data."""
+    ai_analysis_cache[cache_key] = {
+        "data": analysis_data,
+        "timestamp": datetime.now(timezone.utc).timestamp()
+    }
+    print(f"💾 Cached AI analysis (key: {cache_key[:8]}..., expires in {CACHE_DURATION_SECONDS}s)")
 
 
 def _add_computed_fields(entry) -> PersonalEntryResponse:
@@ -196,6 +254,157 @@ async def get_all_emotional_analysis(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to retrieve emotional analysis data: {str(e)}")
+
+
+@router.get("/ai/emotional-analysis")
+async def get_emotional_ai_analysis(
+    limit: Optional[int] = Query(100, ge=10, le=500, description="Number of entries to analyze")
+):
+    """
+    Generate AI-powered emotional analysis using AWS Bedrock.
+    
+    Provides comprehensive emotional analysis including:
+    - Executive summary of emotional climate
+    - Key findings about employee emotional well-being
+    - Risk assessment for workplace mental health
+    - Actionable recommendations for improving emotional culture
+    - Workplace psychology insights
+    
+    This endpoint is cached for 5 minutes to improve performance.
+    """
+    if not AI_ANALYTICS_AVAILABLE:
+        raise HTTPException(
+            status_code=503, 
+            detail="AI Analytics service not available. Please check AWS Bedrock configuration."
+        )
+    
+    try:
+        # Generate cache key based on parameters
+        cache_key = _generate_cache_key(limit)
+        
+        # Check cache first
+        cached_result = _get_cached_analysis(cache_key)
+        if cached_result:
+            return cached_result
+        
+        # Cache miss - generate new analysis
+        print(f"🔄 Cache MISS for AI analysis (key: {cache_key[:8]}...) - generating new analysis")
+        
+        # Get entries for analysis
+        entries = PersonalEntryService.get_all(limit=limit)
+        
+        if len(entries) < 5:
+            raise HTTPException(
+                status_code=400,
+                detail="Need at least 5 entries for emotional analysis"
+            )
+        
+        # Generate emotional analysis
+        insight = await bedrock_nlp.generate_emotional_analysis(entries)
+        
+        # Prepare response
+        response_data = {
+            "status": "success",
+            "emotional_analysis": {
+                "type": insight.insight_type,
+                "title": insight.title,
+                "summary": insight.summary,
+                "detailed_analysis": insight.detailed_analysis,
+                "key_findings": insight.key_findings,
+                "recommendations": insight.recommendations,
+                "risk_level": insight.risk_level,
+                "confidence_score": insight.confidence_score,
+                "generated_at": insight.generated_at.isoformat(),
+                "data_period": insight.data_period
+            },
+            "data_summary": {
+                "entries_analyzed": len(entries),
+                "analysis_type": "emotional_analysis",
+                "ai_service": "AWS Bedrock"
+            },
+            "cache_info": {
+                "cached": False,
+                "cache_key": cache_key[:8] + "...",
+                "cache_duration_seconds": CACHE_DURATION_SECONDS
+            }
+        }
+        
+        # Cache the result
+        _set_cached_analysis(cache_key, response_data)
+        
+        return response_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Emotional analysis failed: {str(e)}")
+
+
+@router.get("/ai/cache-status")
+async def get_cache_status():
+    """
+    Get AI analysis cache status and statistics.
+    
+    Returns information about:
+    - Number of cached entries
+    - Cache duration settings
+    - Cache hit/miss statistics
+    """
+    try:
+        current_time = datetime.now(timezone.utc).timestamp()
+        
+        # Count valid cache entries
+        valid_entries = 0
+        expired_entries = 0
+        
+        for cache_key, cache_entry in ai_analysis_cache.items():
+            if _is_cache_valid(cache_entry):
+                valid_entries += 1
+            else:
+                expired_entries += 1
+        
+        return {
+            "status": "success",
+            "cache_info": {
+                "total_entries": len(ai_analysis_cache),
+                "valid_entries": valid_entries,
+                "expired_entries": expired_entries,
+                "cache_duration_seconds": CACHE_DURATION_SECONDS,
+                "cache_duration_minutes": CACHE_DURATION_SECONDS / 60
+            },
+            "cache_keys": [
+                {
+                    "key": key[:8] + "...",
+                    "valid": _is_cache_valid(entry),
+                    "age_seconds": current_time - entry.get("timestamp", 0)
+                }
+                for key, entry in ai_analysis_cache.items()
+            ]
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get cache status: {str(e)}")
+
+
+@router.delete("/ai/cache")
+async def clear_cache():
+    """
+    Clear all AI analysis cache entries.
+    
+    This will force the next AI analysis request to generate fresh data.
+    """
+    try:
+        cache_count = len(ai_analysis_cache)
+        ai_analysis_cache.clear()
+        
+        return {
+            "status": "success",
+            "message": f"Cleared {cache_count} cache entries",
+            "cache_cleared": True
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to clear cache: {str(e)}")
 
 
 @router.get("", response_model=List[PersonalEntryResponse])

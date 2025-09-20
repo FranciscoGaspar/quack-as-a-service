@@ -364,6 +364,31 @@ class BedrockNLPanalytics:
             logger.error(f"❌ Failed to generate anomaly analysis: {e}")
             return self._create_fallback_insight(f"Error: {str(e)}")
     
+    async def generate_emotional_analysis(self, entries: List[PersonalEntry]) -> AIInsight:
+        """Generate AI-powered emotional analysis using AWS Bedrock."""
+        if not self.is_initialized or not self.bedrock_client:
+            return self._create_fallback_insight("AWS Bedrock not available")
+        
+        try:
+            # Prepare emotional analysis data
+            emotional_data = self._prepare_emotional_analysis_data(entries)
+            
+            # Create emotional analysis prompt
+            prompt = self._create_emotional_analysis_prompt(emotional_data)
+            
+            # Call Bedrock API
+            ai_response = self._invoke_model(prompt, max_tokens=1500, temperature=0.3)
+            
+            # Extract structured insights
+            insight = self._parse_ai_response(ai_response, emotional_data, "emotional_analysis")
+            
+            logger.info("✅ Emotional analysis generated successfully using AWS Bedrock")
+            return insight
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to generate emotional analysis: {e}")
+            return self._create_fallback_insight(f"Error: {str(e)}")
+    
     
     def _prepare_analysis_data(self, entries: List[PersonalEntry]) -> Dict[str, Any]:
         """Prepare data for AI analysis."""
@@ -446,6 +471,120 @@ class BedrockNLPanalytics:
             "data_quality": "good" if total_entries >= 20 else "limited"
         }
     
+    def _prepare_emotional_analysis_data(self, entries: List[PersonalEntry]) -> Dict[str, Any]:
+        """Prepare emotional analysis data for AI analysis."""
+        if not entries:
+            return {"error": "No data available"}
+        
+        # Filter entries with emotional analysis
+        entries_with_emotions = [entry for entry in entries if entry.emotional_analysis]
+        
+        if not entries_with_emotions:
+            return {
+                "error": "No emotional analysis data available",
+                "total_entries": len(entries),
+                "entries_with_emotions": 0
+            }
+        
+        # Basic metrics
+        total_entries = len(entries)
+        entries_with_emotions_count = len(entries_with_emotions)
+        emotional_coverage = (entries_with_emotions_count / total_entries) * 100
+        
+        # Emotion distribution analysis
+        emotion_counts = {}
+        confidence_scores = []
+        image_quality_counts = {}
+        faces_detected_counts = []
+        
+        # Room-based emotional patterns
+        room_emotions = defaultdict(list)
+        
+        # Time-based emotional patterns
+        hourly_emotions = defaultdict(list)
+        daily_emotions = defaultdict(list)
+        
+        for entry in entries_with_emotions:
+            analysis = entry.emotional_analysis
+            
+            # Count emotions
+            if analysis.dominant_emotion:
+                emotion_counts[analysis.dominant_emotion] = emotion_counts.get(analysis.dominant_emotion, 0) + 1
+                room_emotions[entry.room_name].append(analysis.dominant_emotion)
+            
+            # Collect confidence scores
+            if analysis.overall_confidence:
+                confidence_scores.append(analysis.overall_confidence)
+            
+            # Count image quality
+            if analysis.image_quality:
+                image_quality_counts[analysis.image_quality] = image_quality_counts.get(analysis.image_quality, 0) + 1
+            
+            # Collect faces detected
+            faces_detected_counts.append(analysis.faces_detected)
+            
+            # Time-based analysis
+            hour = entry.entered_at.hour
+            day = entry.entered_at.date()
+            if analysis.dominant_emotion:
+                hourly_emotions[hour].append(analysis.dominant_emotion)
+                daily_emotions[day].append(analysis.dominant_emotion)
+        
+        # Calculate emotion percentages
+        emotion_percentages = {}
+        for emotion, count in emotion_counts.items():
+            emotion_percentages[emotion] = (count / entries_with_emotions_count) * 100
+        
+        # Calculate average confidence
+        avg_confidence = sum(confidence_scores) / len(confidence_scores) if confidence_scores else 0
+        
+        # Calculate image quality distribution
+        image_quality_percentages = {}
+        for quality, count in image_quality_counts.items():
+            image_quality_percentages[quality] = (count / entries_with_emotions_count) * 100
+        
+        # Calculate average faces detected
+        avg_faces_detected = sum(faces_detected_counts) / len(faces_detected_counts) if faces_detected_counts else 0
+        
+        # Room emotional patterns
+        room_emotional_patterns = {}
+        for room, emotions in room_emotions.items():
+            if emotions:
+                emotion_counter = Counter(emotions)
+                most_common_emotion = emotion_counter.most_common(1)[0]
+                room_emotional_patterns[room] = {
+                    "most_common_emotion": most_common_emotion[0],
+                    "emotion_frequency": most_common_emotion[1],
+                    "total_emotional_entries": len(emotions),
+                    "emotion_distribution": dict(emotion_counter)
+                }
+        
+        # Time period analysis
+        if entries_with_emotions:
+            earliest_entry = min(entries_with_emotions, key=lambda x: x.entered_at)
+            latest_entry = max(entries_with_emotions, key=lambda x: x.entered_at)
+            analysis_period = f"{earliest_entry.entered_at.date()} to {latest_entry.entered_at.date()}"
+        else:
+            analysis_period = "No data"
+        
+        # Find most common emotion overall
+        most_common_emotion = max(emotion_counts.items(), key=lambda x: x[1]) if emotion_counts else None
+        
+        return {
+            "total_entries": total_entries,
+            "entries_with_emotions": entries_with_emotions_count,
+            "emotional_coverage": emotional_coverage,
+            "emotion_distribution": emotion_percentages,
+            "most_common_emotion": most_common_emotion[0] if most_common_emotion else None,
+            "most_common_emotion_count": most_common_emotion[1] if most_common_emotion else 0,
+            "average_confidence": avg_confidence,
+            "image_quality_distribution": image_quality_percentages,
+            "average_faces_detected": avg_faces_detected,
+            "room_emotional_patterns": room_emotional_patterns,
+            "analysis_period": analysis_period,
+            "data_quality": "good" if entries_with_emotions_count >= 10 else "limited"
+        }
+    
     def _create_analysis_prompt(self, data: Dict[str, Any], insight_type: str) -> str:
         """Create prompt for AI analysis."""
         prompt = f"""You are an expert safety compliance analyst. Analyze the following safety compliance data and provide professional insights.
@@ -486,6 +625,88 @@ Please provide a {insight_type} analysis including:
 3. Risk Assessment (Low/Medium/High with reasoning)
 4. Actionable Recommendations (3-5 specific actions)
 5. Confidence Level (0-100%)
+
+Format your response as structured JSON with these fields:
+- summary
+- key_findings (array)
+- risk_level
+- recommendations (array)
+- confidence_score
+
+IMPORTANT: Return ONLY valid JSON without any markdown formatting, code blocks, or additional text. Do not wrap the response in ```json``` or any other formatting.
+"""
+        
+        return prompt
+    
+    def _create_emotional_analysis_prompt(self, data: Dict[str, Any]) -> str:
+        """Create prompt for emotional analysis."""
+        if data.get("error"):
+            return f"""You are an expert workplace psychology and emotional intelligence analyst. 
+
+ERROR: {data['error']}
+
+Please provide a brief analysis explaining why emotional analysis data is not available and what steps should be taken to collect this valuable workplace wellness data.
+
+Format as structured JSON with fields:
+- summary
+- key_findings (array)
+- risk_level
+- recommendations (array)
+- confidence_score
+
+IMPORTANT: Return ONLY valid JSON without any markdown formatting, code blocks, or additional text. Do not wrap the response in ```json``` or any other formatting.
+"""
+        
+        prompt = f"""You are an expert workplace psychology and emotional intelligence analyst. Analyze the following emotional data from workplace entries and provide comprehensive insights about employee emotional well-being and workplace culture.
+
+EMOTIONAL DATA OVERVIEW:
+- Total Entries: {data['total_entries']}
+- Entries with Emotional Analysis: {data['entries_with_emotions']}
+- Emotional Data Coverage: {data['emotional_coverage']:.1f}%
+- Analysis Period: {data['analysis_period']}
+- Data Quality: {data['data_quality']}
+
+EMOTION DISTRIBUTION:
+"""
+        
+        for emotion, percentage in data['emotion_distribution'].items():
+            prompt += f"- {emotion}: {percentage:.1f}% of emotional entries\n"
+        
+        prompt += f"""
+MOST COMMON EMOTION: {data['most_common_emotion']} ({data['most_common_emotion_count']} occurrences)
+AVERAGE CONFIDENCE LEVEL: {data['average_confidence']:.1f}%
+AVERAGE FACES DETECTED: {data['average_faces_detected']:.1f}
+
+IMAGE QUALITY DISTRIBUTION:
+"""
+        
+        for quality, percentage in data['image_quality_distribution'].items():
+            prompt += f"- {quality}: {percentage:.1f}%\n"
+        
+        prompt += f"""
+ROOM EMOTIONAL PATTERNS:
+"""
+        
+        for room, patterns in data['room_emotional_patterns'].items():
+            prompt += f"- {room}: Most common emotion is {patterns['most_common_emotion']} ({patterns['emotion_frequency']}/{patterns['total_emotional_entries']} entries)\n"
+        
+        prompt += f"""
+
+Please provide a comprehensive emotional analysis including:
+
+1. EXECUTIVE SUMMARY (2-3 sentences about overall emotional climate)
+2. KEY FINDINGS (4-6 bullet points about emotional patterns, workplace culture, and employee well-being)
+3. RISK ASSESSMENT (Low/Medium/High with specific reasoning about emotional health risks)
+4. ACTIONABLE RECOMMENDATIONS (4-6 specific actions to improve emotional well-being and workplace culture)
+5. CONFIDENCE LEVEL (0-100% based on data quality and sample size)
+
+Focus on:
+- Employee emotional well-being and mental health indicators
+- Workplace culture and environment assessment
+- Potential stress factors and their impact
+- Recommendations for improving emotional climate
+- Risk factors for employee burnout or dissatisfaction
+- Positive emotional patterns to reinforce
 
 Format your response as structured JSON with these fields:
 - summary

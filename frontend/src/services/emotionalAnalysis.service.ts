@@ -104,3 +104,41 @@ export const GetEmotionalAnalysisSummary = async (
   const { data } = await axiosInstance<EmotionalAnalysisSummary>(url);
   return data;
 };
+
+export type EmotionalAIAnalysis = {
+  type: string;
+  title: string;
+  summary: string;
+  detailed_analysis: string;
+  key_findings: string[];
+  recommendations: string[];
+  risk_level: string;
+  confidence_score: number;
+  generated_at: string;
+  data_period: string;
+};
+
+export type EmotionalAIAnalysisResponse = {
+  status: string;
+  emotional_analysis: EmotionalAIAnalysis;
+  data_summary: {
+    entries_analyzed: number;
+    analysis_type: string;
+    ai_service: string;
+  };
+  cache_info?: {
+    cached: boolean;
+    cache_key: string;
+    cache_duration_seconds: number;
+  };
+};
+
+export const GetEmotionalAIAnalysis = async (limit: number = 100): Promise<EmotionalAIAnalysisResponse> => {
+  const params = new URLSearchParams();
+  params.append("limit", limit.toString());
+
+  const { data } = await axiosInstance<EmotionalAIAnalysisResponse>(
+    `/entries/ai/emotional-analysis?${params.toString()}`
+  );
+  return data;
+};
