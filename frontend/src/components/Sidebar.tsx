@@ -2,7 +2,6 @@
 
 import { ROUTES } from "@/constants/routes";
 import {
-  BrainIcon,
   CameraIcon,
   ClipboardPenLineIcon,
   DoorOpenIcon,
@@ -10,6 +9,7 @@ import {
   type LucideIcon,
   MessageSquareIcon,
   PackageOpenIcon,
+  PersonStandingIcon,
   Settings,
   ShieldIcon
 } from "lucide-react";
@@ -60,11 +60,6 @@ const groupRoutes: GroupedRoute[] = [
         url: ROUTES.reports,
       },
       {
-        icon: BrainIcon,
-        title: "Emotional Analysis",
-        url: ROUTES.emotionalAnalysis,
-      },
-      {
         icon: MessageSquareIcon,
         title: "Ask AI",
         url: ROUTES.aiChat,
@@ -89,6 +84,17 @@ const groupRoutes: GroupedRoute[] = [
         icon: PackageOpenIcon,
         title: "Packaging Area",
         url: ROUTES.liveCapture("packaging-area"),
+      },
+    ],
+  },
+  {
+    key: "accidents",
+    label: "Accidents",
+    items: [
+      {
+        icon: PersonStandingIcon,
+        title: "Fall Accidents",
+        url: ROUTES.accidents,
       },
     ],
   },
@@ -125,11 +131,10 @@ export const Sidebar = () => {
               <Link href={ROUTES.home}>
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg text-sidebar-primary-foreground bg-gradient-to-r from-blue-500 to-blue-600">
                   <Image
-                    alt="Quack as a Service"
-                    height={40}
-                    width={40}
-                    src="https://quack-as-a-service-bucket.s3.us-east-1.amazonaws.com/duck_no_back.png"
-                    className="object-contain"
+                    alt=""
+                    height={16}
+                    src="https://quack-as-a-service-bucket.s3.us-east-1.amazonaws.com/ChatGPT+Image+Sept+19+2025+from+Team+Suggestion+(2).png"
+                    width={16}
                   />
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
