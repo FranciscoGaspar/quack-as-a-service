@@ -419,12 +419,28 @@ class BedrockNLPanalytics:
             if entry.is_compliant():
                 room_stats[entry.room_name]["compliant"] += 1
         
+        # Enhanced room analysis with risk assessment
         room_performance = {}
+        room_equipment_issues = defaultdict(lambda: defaultdict(int))
+        
+        # Track equipment issues by room
+        for entry in entries:
+            if entry.equipment:
+                for equipment, is_present in entry.equipment.items():
+                    if not is_present:
+                        room_equipment_issues[entry.room_name][equipment] += 1
+        
         for room, stats in room_stats.items():
             compliance_rate = (stats["compliant"] / stats["entries"]) * 100 if stats["entries"] > 0 else 0
+            violation_count = stats["entries"] - stats["compliant"]
             room_performance[room] = {
                 "entries": stats["entries"],
-                "compliance_rate": compliance_rate
+                "compliance_rate": compliance_rate,
+                "compliant_entries": stats["compliant"],
+                "violations": violation_count,
+                "main_equipment_issues": dict(room_equipment_issues[room]),
+                "risk_level": "CRITICAL" if compliance_rate < 60 else "HIGH" if compliance_rate < 70 else "MEDIUM" if compliance_rate < 85 else "LOW",
+                "needs_attention": compliance_rate < 80
             }
         
         # Time period analysis
@@ -435,15 +451,63 @@ class BedrockNLPanalytics:
         else:
             analysis_period = "No data"
         
+        # Add shift analysis
+        shift_stats = {"morning": [], "afternoon": [], "night": []}
+        for entry in entries:
+            hour = entry.entered_at.hour
+            if 6 <= hour < 14:
+                shift_stats["morning"].append(entry.is_compliant())
+            elif 14 <= hour < 22:
+                shift_stats["afternoon"].append(entry.is_compliant())
+            else:
+                shift_stats["night"].append(entry.is_compliant())
+        
+        shift_compliance = {}
+        for shift, compliance_list in shift_stats.items():
+            if compliance_list:
+                shift_compliance[shift] = {
+                    "compliance_rate": (sum(compliance_list) / len(compliance_list)) * 100,
+                    "entries": len(compliance_list),
+                    "violations": len(compliance_list) - sum(compliance_list)
+                }
+        
+        # Critical insights and alerts
+        critical_issues = []
+        if compliance_rate < 60:
+            critical_issues.append("Overall compliance critically low - immediate action required")
+        
+        worst_equipment = max(equipment_violations.items(), key=lambda x: x[1]["violation_rate"]) if equipment_violations else None
+        if worst_equipment and worst_equipment[1]["violation_rate"] > 30:
+            critical_issues.append(f"High {worst_equipment[1]['label'].lower()} violation rate requires attention")
+        
+        worst_room = min(room_performance.items(), key=lambda x: x[1]["compliance_rate"]) if room_performance else None
+        if worst_room and worst_room[1]["compliance_rate"] < 70:
+            critical_issues.append(f"{worst_room[0]} area has critical compliance issues")
+        
+        # Business impact metrics
+        total_violations = total_entries - compliant_entries
+        violation_rate = (total_violations / total_entries * 100) if total_entries > 0 else 0
+        
         return {
             "total_entries": total_entries,
             "compliant_entries": compliant_entries,
+            "violation_entries": total_violations,
             "compliance_rate": compliance_rate,
+            "violation_rate": violation_rate,
             "equipment_violations": equipment_violations,
             "hourly_compliance": hourly_compliance,
+            "shift_compliance": shift_compliance,
             "room_performance": room_performance,
+            "critical_issues": critical_issues,
             "analysis_period": analysis_period,
-            "data_quality": "good" if total_entries >= 20 else "limited"
+            "data_quality": "Excellent" if total_entries > 100 else "Good" if total_entries > 50 else "Fair" if total_entries > 20 else "Limited" if total_entries > 0 else "No data",
+            "overall_risk_level": "CRITICAL" if compliance_rate < 60 else "HIGH" if compliance_rate < 70 else "MEDIUM" if compliance_rate < 85 else "LOW",
+            "business_impact": {
+                "total_safety_violations": total_violations,
+                "compliance_score": f"{compliance_rate:.1f}%",
+                "needs_immediate_action": compliance_rate < 70,
+                "high_risk_rooms": [room for room, stats in room_performance.items() if stats["risk_level"] in ["CRITICAL", "HIGH"]]
+            }
         }
     
     def _create_analysis_prompt(self, data: Dict[str, Any], insight_type: str) -> str:
@@ -578,56 +642,144 @@ IMPORTANT: Return ONLY valid JSON without any markdown formatting, code blocks, 
         return prompt
     
     def _create_custom_analysis_prompt(self, data: Dict[str, Any], user_prompt: str) -> str:
-        """Create prompt for custom user analysis."""
-        prompt = f"""You are an expert safety compliance analyst. A user has asked a specific question about their compliance data.
+        """Create enhanced prompt for detailed factory safety analysis."""
+        # Classify the question for targeted analysis
+        question_type = self._classify_question(user_prompt)
+        
+        prompt = f"""You are a senior factory safety compliance analyst specializing in Personal Protective Equipment (PPE) monitoring and workplace safety management.
 
+ANALYSIS TYPE: {question_type.upper()} ANALYSIS
 USER'S QUESTION: "{user_prompt}"
 
-COMPLIANCE DATA CONTEXT:
-- Total Entries: {data['total_entries']}
-- Compliance Rate: {data['compliance_rate']:.1f}%
+FACTORY SAFETY OVERVIEW:
+- Total Factory Entries Analyzed: {data['total_entries']}
+- Overall Safety Compliance Rate: {data['compliance_rate']:.1f}%
 - Analysis Period: {data['analysis_period']}
-- Data Quality: {data['data_quality']}
+- Data Quality Assessment: {data['data_quality']}
+- Current Risk Level: {'CRITICAL' if data['compliance_rate'] < 60 else 'HIGH' if data['compliance_rate'] < 70 else 'MEDIUM' if data['compliance_rate'] < 90 else 'LOW'}
 
-EQUIPMENT VIOLATIONS:
+DETAILED PPE COMPLIANCE BREAKDOWN:
 """
         
+        # Enhanced equipment analysis with context
         for equipment, stats in data['equipment_violations'].items():
-            prompt += f"- {stats['label']}: {stats['violation_rate']:.1f}% violation rate ({stats['violations']}/{stats['total']} entries)\n"
+            risk_indicator = "⚠️ HIGH RISK" if stats['violation_rate'] > 20 else "⚡ MODERATE RISK" if stats['violation_rate'] > 10 else "✓ LOW RISK"
+            prompt += f"- {stats['label']}: {stats['violation_rate']:.1f}% violations ({stats['violations']}/{stats['total']} entries) - {risk_indicator}\n"
         
         prompt += f"""
-HOURLY COMPLIANCE PATTERNS:
+FACILITY AREA PERFORMANCE ANALYSIS:
 """
-        
-        # Add top 3 worst hours
-        worst_hours = sorted(data['hourly_compliance'].items(), key=lambda x: x[1]['compliance_rate'])[:3]
-        for hour, stats in worst_hours:
-            prompt += f"- {hour}:00 - {stats['compliance_rate']:.1f}% compliance ({stats['entries']} entries)\n"
+        # Sort rooms by compliance rate for better insights
+        sorted_rooms = sorted(data['room_performance'].items(), key=lambda x: x[1]['compliance_rate'])
+        for room, stats in sorted_rooms:
+            performance_level = stats.get('risk_level', 'UNKNOWN')
+            prompt += f"- {room}: {stats['compliance_rate']:.1f}% compliant ({stats['entries']} entries) - {performance_level} RISK\n"
+            if 'main_equipment_issues' in stats and stats['main_equipment_issues']:
+                main_issues = sorted(stats['main_equipment_issues'].items(), key=lambda x: x[1], reverse=True)[:2]
+                issue_text = ", ".join([f"{eq}({count})" for eq, count in main_issues])
+                prompt += f"  Primary violations: {issue_text}\n"
         
         prompt += f"""
-ROOM PERFORMANCE:
+TEMPORAL COMPLIANCE PATTERNS:
 """
         
-        for room, stats in data['room_performance'].items():
-            prompt += f"- {room}: {stats['compliance_rate']:.1f}% compliance ({stats['entries']} entries)\n"
+        # Enhanced shift and hourly analysis
+        if 'shift_compliance' in data and data['shift_compliance']:
+            prompt += "Shift Performance Analysis:\n"
+            for shift, stats in data['shift_compliance'].items():
+                shift_risk = "HIGH RISK" if stats['compliance_rate'] < 70 else "MEDIUM RISK" if stats['compliance_rate'] < 85 else "LOW RISK"
+                prompt += f"- {shift.title()} shift: {stats['compliance_rate']:.1f}% compliant ({stats['entries']} entries, {stats.get('violations', 0)} violations) - {shift_risk}\n"
+        
+        if 'hourly_compliance' in data and data['hourly_compliance']:
+            worst_hours = sorted(data['hourly_compliance'].items(), key=lambda x: x[1]['compliance_rate'])[:3]
+            best_hours = sorted(data['hourly_compliance'].items(), key=lambda x: x[1]['compliance_rate'], reverse=True)[:2]
+            
+            prompt += "Worst Performance Hours:\n"
+            for hour, stats in worst_hours:
+                prompt += f"- {hour}:00 - {stats['compliance_rate']:.1f}% compliant ({stats['entries']} entries)\n"
+            
+            prompt += "Best Performance Hours:\n"
+            for hour, stats in best_hours:
+                prompt += f"- {hour}:00 - {stats['compliance_rate']:.1f}% compliant ({stats['entries']} entries)\n"
+        
+        # Add critical issues and business impact
+        if 'critical_issues' in data and data['critical_issues']:
+            prompt += f"""
+CRITICAL SAFETY ALERTS:
+"""
+            for issue in data['critical_issues']:
+                prompt += f"- {issue}\n"
+        
+        if 'business_impact' in data:
+            business = data['business_impact']
+            prompt += f"""
+BUSINESS IMPACT ASSESSMENT:
+- Total Safety Violations: {business.get('total_safety_violations', 'N/A')}
+- Compliance Score: {business.get('compliance_score', 'N/A')}
+- Immediate Action Required: {'YES' if business.get('needs_immediate_action', False) else 'NO'}
+- High Risk Areas: {', '.join(business.get('high_risk_rooms', [])) if business.get('high_risk_rooms') else 'None'}
+"""
+        
+        # Add specific analysis guidance based on question type
+        prompt += f"""
+
+ANALYSIS FOCUS FOR {question_type.upper()}:
+"""
+        
+        if question_type == "compliance_overview":
+            prompt += """- Provide comprehensive compliance status assessment
+- Identify main safety compliance challenges
+- Compare current performance against safety standards
+- Assess overall factory safety health"""
+        elif question_type == "equipment_specific":
+            prompt += """- Deep dive into specific PPE compliance issues
+- Identify equipment-specific violation patterns
+- Analyze impact of missing equipment on safety
+- Provide equipment-specific improvement strategies"""
+        elif question_type == "room_performance":
+            prompt += """- Compare performance across different factory areas
+- Identify high-risk zones requiring immediate attention
+- Analyze room-specific safety challenges
+- Recommend area-specific safety interventions"""
+        elif question_type == "risk_assessment":
+            prompt += """- Conduct comprehensive safety risk evaluation
+- Identify immediate and long-term safety threats
+- Prioritize safety issues by severity and impact
+- Provide emergency response recommendations"""
+        elif question_type == "time_patterns":
+            prompt += """- Analyze temporal trends in safety compliance
+- Identify time-based risk patterns
+- Evaluate shift performance and scheduling impacts
+- Recommend time-based safety interventions"""
+        elif question_type == "recommendations":
+            prompt += """- Develop actionable safety improvement strategies
+- Prioritize recommendations by impact and feasibility
+- Provide implementation timelines and resource requirements
+- Create measurable safety improvement goals"""
         
         prompt += f"""
 
-Please answer the user's question: "{user_prompt}"
-
-Provide a comprehensive analysis that directly addresses their question, including:
-1. Direct answer to their question
-2. Supporting data and evidence
-3. Key insights relevant to their question
-4. Actionable recommendations if applicable
-5. Risk assessment if relevant
+COMPREHENSIVE ANALYSIS REQUIREMENTS:
+1. Direct, data-driven answer to: "{user_prompt}"
+2. Supporting evidence from compliance data with specific numbers
+3. Key insights relevant to factory safety and operational efficiency
+4. Actionable safety recommendations with implementation priorities
+5. Risk assessment with urgency levels and potential safety impacts
+6. ROI considerations for safety improvements where applicable
 
 Format your response as structured JSON with these fields:
-- summary (direct answer to their question)
-- key_findings (array of relevant insights)
-- risk_level (if applicable)
-- recommendations (array of actionable items)
-- confidence_score (0-100%)
+- summary: Comprehensive answer directly addressing the user's question (2-3 sentences)
+- key_findings: Array of 4-6 critical insights with data support
+- risk_level: "low", "medium", "high", or "critical" with justification
+- recommendations: Array of 4-6 specific, actionable safety improvements
+- confidence_score: 0-100% based on data quality and analysis certainty
+
+Use professional factory safety terminology. Focus on:
+- PPE compliance and safety protocols
+- Operational safety risks and mitigation strategies  
+- Regulatory compliance and safety standards
+- Cost-benefit analysis of safety improvements
+- Employee safety and training needs
 
 IMPORTANT: Return ONLY valid JSON without any markdown formatting, code blocks, or additional text. Do not wrap the response in ```json``` or any other formatting.
 """
@@ -635,32 +787,122 @@ IMPORTANT: Return ONLY valid JSON without any markdown formatting, code blocks, 
         return prompt
     
     def _create_quick_answer_prompt(self, data: Dict[str, Any], question: str) -> str:
-        """Create prompt for quick answer."""
-        prompt = f"""You are a safety compliance expert. Answer this question concisely based on the compliance data:
+        """Create enhanced prompt for quick answer with factory safety context."""
+        # Classify the question type for targeted responses
+        question_type = self._classify_question(question)
+        
+        prompt = f"""You are a factory safety compliance expert specializing in Personal Protective Equipment (PPE) monitoring. 
 
-QUESTION: "{question}"
+QUESTION TYPE: {question_type}
+USER'S QUESTION: "{question}"
 
-DATA SUMMARY:
-- Total Entries: {data['total_entries']}
-- Compliance Rate: {data['compliance_rate']:.1f}%
+CURRENT SAFETY STATUS:
+- Total Factory Entries: {data['total_entries']}
+- Overall Compliance Rate: {data['compliance_rate']:.1f}%
 - Analysis Period: {data['analysis_period']}
+- Risk Level: {'HIGH' if data['compliance_rate'] < 70 else 'MEDIUM' if data['compliance_rate'] < 90 else 'LOW'}
 
-EQUIPMENT ISSUES:
+EQUIPMENT VIOLATIONS (PPE MISSING):
 """
         
         for equipment, stats in data['equipment_violations'].items():
             if stats['violation_rate'] > 0:
-                prompt += f"- {stats['label']}: {stats['violation_rate']:.1f}% violations\n"
+                prompt += f"- {stats['label']}: {stats['violation_rate']:.1f}% violations ({stats['violations']}/{stats['total']} entries)\n"
+        
+        # Add room-specific data with risk levels
+        if 'room_performance' in data and data['room_performance']:
+            prompt += f"\nROOM SAFETY PERFORMANCE:\n"
+            for room, stats in sorted(data['room_performance'].items(), key=lambda x: x[1]['compliance_rate']):
+                risk_indicator = f" ({stats.get('risk_level', 'UNKNOWN')} RISK)" if 'risk_level' in stats else ""
+                prompt += f"- {room}: {stats['compliance_rate']:.1f}% compliant ({stats['entries']} entries){risk_indicator}\n"
+                if 'main_equipment_issues' in stats and stats['main_equipment_issues']:
+                    top_issue = max(stats['main_equipment_issues'].items(), key=lambda x: x[1])
+                    prompt += f"  Main issue: {top_issue[0]} ({top_issue[1]} violations)\n"
+        
+        # Add shift performance if available
+        if 'shift_compliance' in data and data['shift_compliance']:
+            prompt += f"\nSHIFT PERFORMANCE:\n"
+            for shift, stats in data['shift_compliance'].items():
+                prompt += f"- {shift.title()} shift: {stats['compliance_rate']:.1f}% compliant ({stats['entries']} entries, {stats.get('violations', 0)} violations)\n"
+        
+        # Add critical issues
+        if 'critical_issues' in data and data['critical_issues']:
+            prompt += f"\nCRITICAL SAFETY ALERTS:\n"
+            for issue in data['critical_issues']:
+                prompt += f"- {issue}\n"
+        
+        # Add time-based patterns if available
+        if 'hourly_compliance' in data and data['hourly_compliance']:
+            worst_hours = sorted(data['hourly_compliance'].items(), key=lambda x: x[1]['compliance_rate'])[:3]
+            if worst_hours:
+                prompt += f"\nWORST COMPLIANCE HOURS:\n"
+                for hour, stats in worst_hours:
+                    prompt += f"- {hour}:00 - {stats['compliance_rate']:.1f}% compliant ({stats['entries']} entries)\n"
         
         prompt += f"""
 
-Provide a concise, direct answer to the user's question. Be specific and use the actual data numbers. 
-Keep your response under 200 words and focus on the most important points.
+RESPONSE GUIDELINES FOR {question_type.upper()}:
+"""
+        
+        # Add specific guidance based on question type
+        if question_type == "compliance_overview":
+            prompt += "Focus on overall compliance rates, main violations, and safety status summary."
+        elif question_type == "equipment_specific":
+            prompt += "Focus on specific equipment violations, trends, and recommendations for that equipment type."
+        elif question_type == "room_performance":
+            prompt += "Focus on room-specific compliance data, comparisons between rooms, and room-specific issues."
+        elif question_type == "risk_assessment":
+            prompt += "Focus on safety risks, urgency levels, and immediate actions needed."
+        elif question_type == "time_patterns":
+            prompt += "Focus on time-based patterns, shift performance, and temporal trends in compliance."
+        elif question_type == "recommendations":
+            prompt += "Focus on actionable recommendations, improvement strategies, and next steps."
+        else:
+            prompt += "Provide a comprehensive answer addressing the specific safety compliance question."
+        
+        prompt += f"""
 
-Do not use markdown formatting or code blocks. Just provide a clear, direct answer.
+Provide a concise, direct answer using actual data numbers. Be specific about:
+- Current safety status and compliance rates
+- Specific violations and their impact
+- Immediate safety concerns if any
+- Clear, actionable insights
+
+Keep response under 200 words. Use factory safety terminology (PPE, compliance, violations, safety protocols).
+Do not use markdown formatting or code blocks. Provide a clear, professional safety analysis.
 """
         
         return prompt
+    
+    def _classify_question(self, question: str) -> str:
+        """Classify the type of safety compliance question for targeted responses."""
+        question_lower = question.lower()
+        
+        # Equipment-specific questions
+        if any(equipment in question_lower for equipment in ['mask', 'glove', 'hairnet', 'glasses', 'equipment']):
+            return "equipment_specific"
+        
+        # Room/location-specific questions  
+        if any(room in question_lower for room in ['room', 'floor', 'area', 'line', 'production', 'assembly', 'packaging']):
+            return "room_performance"
+        
+        # Risk and safety assessment questions
+        if any(risk_word in question_lower for risk_word in ['risk', 'danger', 'safety', 'critical', 'urgent', 'problem']):
+            return "risk_assessment"
+        
+        # Time-based questions
+        if any(time_word in question_lower for time_word in ['hour', 'shift', 'time', 'when', 'trend', 'pattern']):
+            return "time_patterns"
+        
+        # Recommendation questions
+        if any(rec_word in question_lower for rec_word in ['improve', 'fix', 'solve', 'recommend', 'should', 'how']):
+            return "recommendations"
+        
+        # Overall compliance questions
+        if any(comp_word in question_lower for comp_word in ['compliance', 'overall', 'rate', 'performance', 'status']):
+            return "compliance_overview"
+        
+        return "general"
     
     def _parse_custom_response(self, response: str, data: Dict[str, Any], user_prompt: str) -> AIInsight:
         """Parse custom AI response into structured insight."""
