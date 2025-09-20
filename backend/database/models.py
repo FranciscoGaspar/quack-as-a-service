@@ -223,6 +223,15 @@ class PersonalEntry(Base):
         return f'<PersonalEntry {self.id}: User {self.user_id}>'
     
     def to_dict(self):
+        # Safely handle emotional_analysis relationship to avoid DetachedInstanceError
+        emotional_analysis_data = None
+        try:
+            if self.emotional_analysis:
+                emotional_analysis_data = self.emotional_analysis.to_dict()
+        except Exception:
+            # If we can't access emotional_analysis (e.g., DetachedInstanceError), set to None
+            emotional_analysis_data = None
+        
         return {
             'id': self.id,
             'user_id': self.user_id,
@@ -235,7 +244,7 @@ class PersonalEntry(Base):
             'entered_at': self.entered_at.isoformat(),
             'created_at': self.created_at.isoformat(),
             'user': self.user.to_dict() if self.user else None,
-            'emotional_analysis': self.emotional_analysis.to_dict() if self.emotional_analysis else None
+            'emotional_analysis': emotional_analysis_data
         }
     
     def set_equipment_status(self, **equipment_status):

@@ -125,8 +125,29 @@ def _add_computed_fields(entry) -> PersonalEntryResponse:
         except Exception as e:
             print(f"⚠️  Could not calculate approval status for entry {entry.id}: {e}")
     
-    # First validate with base schema (includes new approval fields)
-    base_data = PersonalEntryBaseResponse.model_validate(entry)
+    # Safely handle emotional_analysis to avoid DetachedInstanceError
+    emotional_analysis_data = None
+    try:
+        if hasattr(entry, 'emotional_analysis') and entry.emotional_analysis:
+            emotional_analysis_data = entry.emotional_analysis.to_dict()
+    except Exception as e:
+        print(f"⚠️  Could not access emotional_analysis for entry {entry.id}: {e}")
+        emotional_analysis_data = None
+    
+    # Create base data manually to avoid Pydantic validation issues
+    base_data = {
+        'id': entry.id,
+        'user_id': entry.user_id,
+        'room_name': entry.room_name,
+        'image_url': entry.image_url,
+        'equipment': entry.equipment,
+        'is_approved': entry.is_approved,
+        'equipment_score': entry.equipment_score,
+        'approval_reason': entry.approval_reason,
+        'emotional_analysis': emotional_analysis_data,
+        'entered_at': entry.entered_at,
+        'created_at': entry.created_at
+    }
     
     # Fetch user name if user_id is present
     user_name = None
@@ -141,7 +162,7 @@ def _add_computed_fields(entry) -> PersonalEntryResponse:
     
     # Then create full response with computed fields
     return PersonalEntryResponse(
-        **base_data.model_dump(),
+        **base_data,
         is_compliant=entry.is_compliant(),
         missing_equipment=entry.get_missing_equipment(),
         user_name=user_name
