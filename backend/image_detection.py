@@ -192,7 +192,6 @@ def combine_detection_results(all_results):
         combined_scores.extend(result['scores'])
         combined_labels.extend(result['labels'])
     
-    # Remove duplicates based on box overlap
     unique_results = []
     used_indices = set()
     
@@ -371,10 +370,6 @@ def _draw_detection_annotations(ax, image, results, text_queries, missing_items)
                                    linewidth=2, edgecolor=color, facecolor='none')
             ax.add_patch(rect)
             
-            # Add label and confidence score
-            ax.text(x1, y1-5, f'{label}: {score:.3f}', 
-                   fontsize=10, color=color, weight='bold',
-                   bbox=dict(boxstyle="round,pad=0.32", facecolor='white', alpha=0.8))
     
     # Detect hands and head using the model, then add red squares for missing items
     image_width, image_height = image.size
@@ -414,9 +409,6 @@ def _draw_detection_annotations(ax, image, results, text_queries, missing_items)
                 head_square = patches.Rectangle((x1, y1), x2-x1, y2-y1, 
                                               linewidth=3, edgecolor='red', facecolor='none')
                 ax.add_patch(head_square)
-                ax.text(x1, y1-15, 'MISSING MASK', 
-                       fontsize=10, color='red', weight='bold',
-                       bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
             else:
                 # Fallback to fixed position if no head detected
                 head_size = min(image_width, image_height) * 0.2
@@ -425,9 +417,6 @@ def _draw_detection_annotations(ax, image, results, text_queries, missing_items)
                 head_square = patches.Rectangle((head_x, head_y), head_size, head_size, 
                                               linewidth=3, edgecolor='red', facecolor='none')
                 ax.add_patch(head_square)
-                ax.text(head_x + head_size/2, head_y - 15, 'MISSING MASK', 
-                       fontsize=10, color='red', weight='bold', ha='center',
-                       bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
         
         if 'hairnet' in missing_lower:
             if detected_heads:
@@ -444,9 +433,6 @@ def _draw_detection_annotations(ax, image, results, text_queries, missing_items)
                 head_square = patches.Rectangle((x1, y1), x2-x1, y2-y1, 
                                               linewidth=3, edgecolor='red', facecolor='none')
                 ax.add_patch(head_square)
-                ax.text(x1, y1-15, 'MISSING HAIRNET', 
-                       fontsize=10, color='red', weight='bold',
-                       bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
             else:
                 # Fallback to fixed position if no head detected
                 head_size = min(image_width, image_height) * 0.2
@@ -455,9 +441,6 @@ def _draw_detection_annotations(ax, image, results, text_queries, missing_items)
                 head_square = patches.Rectangle((head_x, head_y), head_size, head_size, 
                                               linewidth=3, edgecolor='red', facecolor='none')
                 ax.add_patch(head_square)
-                ax.text(head_x + head_size/2, head_y - 15, 'MISSING HAIRNET', 
-                       fontsize=10, color='red', weight='bold', ha='center',
-                       bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
         
         if 'glove' in missing_lower:
             if detected_hands:
@@ -472,10 +455,6 @@ def _draw_detection_annotations(ax, image, results, text_queries, missing_items)
                     hand_square = patches.Rectangle((x1, y1), x2-x1, y2-y1, 
                                                   linewidth=3, edgecolor='red', facecolor='none')
                     ax.add_patch(hand_square)
-                
-                ax.text(image_width/2, image_height * 0.8, 'MISSING HAND PROTECTION', 
-                       fontsize=10, color='red', weight='bold', ha='center',
-                       bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
             else:
                 # Fallback to fixed positions if no hands detected
                 hand_size = min(image_width, image_height) * 0.12
@@ -491,13 +470,7 @@ def _draw_detection_annotations(ax, image, results, text_queries, missing_items)
                                                     linewidth=3, edgecolor='red', facecolor='none')
                 ax.add_patch(right_hand_square)
                 
-                ax.text(image_width/2, left_hand_y + hand_size + 20, 'MISSING HAND PROTECTION', 
-                       fontsize=10, color='red', weight='bold', ha='center',
-                       bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
 
-    # Add title
-    ax.set_title(f'Object Detection Results\nQueries: {", ".join(text_queries)}\nMissing items: {", ".join(missing_items)}', 
-                fontsize=14, weight='bold')
     ax.axis('off')
 
 def _draw_detection_annotations_optimized(ax, image, results, text_queries, missing_items, body_parts_results=None, qr_codes=None):
@@ -542,10 +515,6 @@ def _draw_detection_annotations_optimized(ax, image, results, text_queries, miss
                                    linewidth=2, edgecolor=color, facecolor='none')
             ax.add_patch(rect)
             
-            # Add label and confidence score
-            ax.text(x1, y1-5, f'{label}: {score:.3f}', 
-                   fontsize=10, color=color, weight='bold',
-                   bbox=dict(boxstyle="round,pad=0.32", facecolor='white', alpha=0.8))
     
     # Use provided body parts results or detect them
     if body_parts_results is None:
@@ -587,9 +556,6 @@ def _draw_detection_annotations_optimized(ax, image, results, text_queries, miss
                 head_square = patches.Rectangle((x1, y1), x2-x1, y2-y1, 
                                               linewidth=3, edgecolor='red', facecolor='none')
                 ax.add_patch(head_square)
-                ax.text(x1, y1-15, f'MISSING {missing_item.upper()}', 
-                       fontsize=10, color='red', weight='bold',
-                       bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
         
         if 'glove' in missing_lower:
             if detected_hands:
@@ -605,9 +571,6 @@ def _draw_detection_annotations_optimized(ax, image, results, text_queries, miss
                                                   linewidth=3, edgecolor='red', facecolor='none')
                     ax.add_patch(hand_square)
                 
-                ax.text(image_width/2, image_height * 0.8, 'MISSING HAND PROTECTION', 
-                       fontsize=10, color='red', weight='bold', ha='center',
-                       bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
     
     # Draw QR codes if provided
     if qr_codes:
@@ -627,17 +590,7 @@ def _draw_detection_annotations_optimized(ax, image, results, text_queries, miss
                 # Add QR code label
                 qr_data = qr_code.get('data', 'QR Code')
                 confidence = qr_code.get('confidence', 1.0)
-                ax.text(x1, y1-5, f'QR: {qr_data[:20]}{"..." if len(qr_data) > 20 else ""} ({confidence:.2f})', 
-                       fontsize=10, color='green', weight='bold',
-                       bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
 
-    # Add title with QR code info
-    title_text = f'Object Detection Results\nQueries: {", ".join(text_queries)}\nMissing items: {", ".join(missing_items)}'
-    if qr_codes:
-        qr_count = len(qr_codes)
-        title_text += f'\nQR Codes: {qr_count} detected'
-    
-    ax.set_title(title_text, fontsize=14, weight='bold')
     ax.axis('off')
 
 
@@ -718,8 +671,6 @@ def create_simple_annotated_image(image, results, missing_items, qr_codes=None):
             # Draw rectangle
             draw.rectangle([x1, y1, x2, y2], outline='blue', width=2)
             
-            # Draw label
-            draw.text((x1, y1-25), f'{label}: {score:.2f}', fill='blue', font=font)
     
     # Draw QR codes if provided
     if qr_codes:
@@ -734,21 +685,6 @@ def create_simple_annotated_image(image, results, missing_items, qr_codes=None):
                 # Draw QR code rectangle
                 draw.rectangle([x1, y1, x2, y2], outline='green', width=2)
                 
-                # Draw QR code label
-                qr_data = qr_code.get('data', 'QR Code')
-                draw.text((x1, y1-25), f'QR: {qr_data[:15]}{"..." if len(qr_data) > 15 else ""}', fill='green', font=font)
-    
-    # Add missing items text
-    text_y = 10
-    if missing_items:
-        missing_text = f"Missing: {', '.join(missing_items)}"
-        draw.text((10, text_y), missing_text, fill='red', font=font)
-        text_y += 30
-    
-    # Add QR code count
-    if qr_codes:
-        qr_text = f"QR Codes: {len(qr_codes)} detected"
-        draw.text((10, text_y), qr_text, fill='green', font=font)
     
     # Convert to bytes
     img_buffer = io.BytesIO()
