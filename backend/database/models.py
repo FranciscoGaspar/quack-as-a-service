@@ -1,6 +1,6 @@
 """Database models for Quack as a Service"""
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float, Boolean
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from .connection import Base
@@ -30,6 +30,84 @@ class User(Base):
             'updated_at': self.updated_at.isoformat()
         }
 
+
+class RoomEquipmentConfiguration(Base):
+    """Room equipment configuration with weights and thresholds"""
+    __tablename__ = 'room_equipment_configurations'
+    
+    id = Column(Integer, primary_key=True)
+    room_name = Column(String(100), nullable=False, unique=True)
+    equipment_weights = Column(JSONB, nullable=False, default=lambda: {})  # {"mask": "required", "gloves": "recommended", "hairnet": "required"}
+    entry_threshold = Column(Float, nullable=False, default=70.0)  # Minimum score required for entry
+    is_active = Column(Boolean, nullable=False, default=True)
+    description = Column(String(500), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    
+    def __repr__(self):
+        return f'<RoomEquipmentConfig {self.room_name}: threshold={self.entry_threshold}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'room_name': self.room_name,
+            'equipment_weights': self.equipment_weights,
+            'entry_threshold': self.entry_threshold,
+            'is_active': self.is_active,
+            'description': self.description,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat()
+        }
+    
+    def calculate_equipment_score(self, detected_equipment: dict) -> float:
+        """
+        Calculate equipment compliance score based on requirement levels
+        
+        Args:
+            detected_equipment: Dict of equipment -> detected status (e.g., {"mask": True, "gloves": False})
+            
+        Returns:
+            Float score (0-10): 10 = all required present, 5-9 = missing recommended, 0-4 = missing required
+        """
+        if not self.equipment_weights or not detected_equipment:
+            return 0.0
+        
+        required_items = [eq for eq, level in self.equipment_weights.items() if level == "required"]
+        recommended_items = [eq for eq, level in self.equipment_weights.items() if level == "recommended"]
+        
+        # Check required items (critical for entry)
+        required_present = sum(1 for eq in required_items if detected_equipment.get(eq, False))
+        required_missing = len(required_items) - required_present
+        
+        # Check recommended items (nice to have)
+        recommended_present = sum(1 for eq in recommended_items if detected_equipment.get(eq, False))
+        
+        # Scoring logic:
+        if required_missing > 0:
+            # Missing required items = low score (0-4)
+            return max(0, 4 - required_missing * 2)
+        else:
+            # All required present, score based on recommended (5-10)
+            if len(recommended_items) == 0:
+                return 10.0  # No recommended items, perfect score
+            else:
+                recommended_ratio = recommended_present / len(recommended_items)
+                return 5.0 + (recommended_ratio * 5.0)  # 5-10 based on recommended compliance
+    
+    def is_entry_approved(self, detected_equipment: dict) -> bool:
+        """
+        Determine if entry should be approved based on equipment score and threshold
+        
+        Args:
+            detected_equipment: Dict of equipment -> detected status
+            
+        Returns:
+            Boolean indicating if entry is approved
+        """
+        score = self.calculate_equipment_score(detected_equipment)
+        return score >= self.entry_threshold
+
+
 class PersonalEntry(Base):
     """Personal entry tracking security equipment when entering rooms"""
     __tablename__ = 'personal_entries'
@@ -39,6 +117,10 @@ class PersonalEntry(Base):
     room_name = Column(String(100), nullable=False)
     image_url = Column(String(500), nullable=True)
     equipment = Column(JSONB, nullable=False, default=lambda: {})
+    # New approval fields
+    is_approved = Column(Boolean, nullable=True)  # True=approved, False=denied, None=pending
+    equipment_score = Column(Float, nullable=True)  # Calculated equipment compliance score
+    approval_reason = Column(String(500), nullable=True)  # Reason for approval/denial
     entered_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
@@ -55,6 +137,9 @@ class PersonalEntry(Base):
             'room_name': self.room_name,
             'image_url': self.image_url,
             'equipment': self.equipment,
+            'is_approved': self.is_approved,
+            'equipment_score': self.equipment_score,
+            'approval_reason': self.approval_reason,
             'entered_at': self.entered_at.isoformat(),
             'created_at': self.created_at.isoformat(),
             'user': self.user.to_dict() if self.user else None
@@ -116,3 +201,56 @@ class PersonalEntry(Base):
             equipment_copy["gloves"] = left_glove and right_glove
         
         return all(equipment_copy.get(item, False) for item in required_equipment)
+    
+    def calculate_and_set_approval_status(self):
+        """
+        Calculate approval status based on room configuration and update the entry
+        Returns tuple of (is_approved, score, reason)
+        """
+        # Import here to avoid circular imports
+        from database.services import RoomEquipmentConfigurationService
+        
+        room_config = RoomEquipmentConfigurationService.get_by_room_name(self.room_name)
+        
+        if not room_config or not room_config.is_active:
+            # Fallback to legacy compliance check if no room config exists
+            is_compliant = self.is_compliant()
+            self.is_approved = is_compliant
+            self.equipment_score = 100.0 if is_compliant else 0.0
+            self.approval_reason = "Legacy compliance check - no room configuration found"
+            return self.is_approved, self.equipment_score, self.approval_reason
+        
+        # Calculate score based on room configuration
+        score = room_config.calculate_equipment_score(self.equipment or {})
+        is_approved = room_config.is_entry_approved(self.equipment or {})
+        
+        # Generate approval reason
+        if is_approved:
+            reason = f"Entry approved - Score: {score:.1f}% (threshold: {room_config.entry_threshold}%)"
+        else:
+            reason = f"Entry denied - Score: {score:.1f}% below threshold: {room_config.entry_threshold}%"
+        
+        # Update the entry
+        self.is_approved = is_approved
+        self.equipment_score = score
+        self.approval_reason = reason
+        
+        return is_approved, score, reason
+    
+    def get_approval_status_display(self) -> str:
+        """Get human-readable approval status"""
+        if self.is_approved is None:
+            return "Pending Review"
+        elif self.is_approved:
+            return "Approved"
+        else:
+            return "Denied"
+    
+    def get_approval_badge_color(self) -> str:
+        """Get color for approval status badge"""
+        if self.is_approved is None:
+            return "yellow"  # Pending
+        elif self.is_approved:
+            return "green"   # Approved
+        else:
+            return "red"     # Denied

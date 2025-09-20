@@ -1,10 +1,11 @@
 'use client';
 
 import { FactoryEntriesActions } from '@/components/factory-entries/FactoryEntriesActions';
+import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/date';
 import type { FactoryEntries } from '@/services/factoryEntries.service';
 import type { ColumnDef } from '@tanstack/react-table';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Shield } from 'lucide-react';
 
 export const columns: ColumnDef<FactoryEntries>[] = [
   {
@@ -27,17 +28,80 @@ export const columns: ColumnDef<FactoryEntries>[] = [
     cell: ({ row }) => {
       const { equipment } = row.original;
 
-      const equipedEquipment = Object.values(equipment).filter(Boolean).length;
-      const equipmentCount = Object.entries(equipment).length;
+      const presentItems = Object.entries(equipment)
+        .filter(([_, isPresent]) => isPresent)
+        .map(([item, _]) => item);
+      
+      const missingItems = Object.entries(equipment)
+        .filter(([_, isPresent]) => !isPresent)
+        .map(([item, _]) => item);
 
       return (
-        <div className="flex items-center gap-2">
-          {equipedEquipment}/{equipmentCount}
-          <CheckCircle2 size={14} />
+        <div className="flex flex-col gap-1">
+          {presentItems.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {presentItems.map(item => (
+                <span key={item} className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded capitalize">
+                  ✓ {item}
+                </span>
+              ))}
+            </div>
+          )}
+          {missingItems.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {missingItems.map(item => (
+                <span key={item} className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded capitalize">
+                  ✗ {item}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       );
     },
-    size: 50,
+    size: 200,
+  },
+  {
+    accessorKey: 'approval_status',
+    header: 'Status',
+    cell: ({ row }) => {
+      const { is_approved, equipment_score, approval_reason } = row.original;
+      
+      // Determine status display
+      let variant: "default" | "destructive" | "outline" | "secondary" = "secondary";
+      let icon = <Clock className="w-3 h-3" />;
+      let text = "Pending";
+      
+      if (is_approved === true) {
+        variant = "default";
+        icon = <CheckCircle2 className="w-3 h-3" />;
+        text = "Approved";
+      } else if (is_approved === false) {
+        variant = "destructive"; 
+        icon = <XCircle className="w-3 h-3" />;
+        text = "Denied";
+      }
+      
+      // No more score display - just simple APPROVED/DENIED
+      
+      return (
+        <div className="flex flex-col gap-1">
+          <Badge variant={variant} className="flex items-center gap-1 w-fit">
+            {icon}
+            {text}
+          </Badge>
+          {approval_reason && (
+            <span className="text-xs text-muted-foreground max-w-[200px] leading-relaxed" 
+                  title={approval_reason}>
+              {is_approved === true ? 'All required items present' : 
+               is_approved === false ? `Missing required items` : 
+               'Processing...'}
+            </span>
+          )}
+        </div>
+      );
+    },
+    size: 200,
   },
   {
     accessorKey: 'entered_at',

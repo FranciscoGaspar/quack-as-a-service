@@ -73,8 +73,12 @@ python -c "from database import init_db; init_db(); print('✅ Database tables c
 
 # Run any pending migrations (can be disabled with RUN_MIGRATIONS=false)
 if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
-    echo "📋 Checking for database migrations..."
-    python database/migrate.py
+    echo "📋 Running database migrations..."
+    if python3 database/migrate.py; then
+        echo "✅ All migrations completed successfully!"
+    else
+        echo "⚠️  Some migrations had issues - check output above"
+    fi
 else
     echo "⏭️  Skipping migrations (RUN_MIGRATIONS=false)"
 fi
@@ -84,19 +88,72 @@ echo "✅ Database initialization complete!"
 # Step 5: Test the system
 echo "🧪 Testing the system..."
 python -c "
-from database import UserService, PersonalEntryService
+from database.services import UserService, PersonalEntryService, RoomEquipmentConfigurationService
 users = UserService.get_all()
 entries = PersonalEntryService.get_all()
-print(f'✅ Database test: {len(users)} users, {len(entries)} entries')
+configs = RoomEquipmentConfigurationService.get_all()
+print(f'✅ Database test: {len(users)} users, {len(entries)} entries, {len(configs)} room configurations')
+
+# Test approval system
+if configs:
+    print('✅ Room Approval System: ACTIVE')
+    for config in configs[:3]:  # Show first 3 configs
+        print(f'   - {config.room_name}: {config.entry_threshold}% threshold')
+else:
+    print('⚠️  Room Approval System: No configurations found')
 "
 
 # Step 6: Start the API
 echo "🚀 Starting FastAPI server..."
 echo "API will be available at: http://localhost:8000"
 echo "API Documentation: http://localhost:8000/docs"
+echo "Room Configurations API: http://localhost:8000/room-configurations"
 echo ""
-echo "Press Ctrl+C to stop the API server"
+
+# Start the API server in background
+echo "Starting API server in background..."
+python main.py &
+API_PID=$!
+echo "✅ API server started (PID: $API_PID)"
+sleep 3
+
+cd ..
+
+# Step 7: Setup and start Frontend
+echo "🌐 Setting up Frontend..."
+cd frontend
+
+# Install frontend dependencies if not already installed
+if [ ! -d "node_modules" ]; then
+    echo "📦 Installing frontend dependencies..."
+    npm install
+    echo "✅ Frontend dependencies installed!"
+else
+    echo "✅ Frontend dependencies already installed!"
+fi
+
+# Start the frontend
+echo "🚀 Starting Next.js frontend..."
+echo "Frontend will be available at: http://localhost:3000"
+echo "Room Configurations: http://localhost:3000/room-configurations"
+echo ""
+echo "🎉 ROOM APPROVAL SYSTEM FEATURES:"
+echo "   • Room equipment configurations with weights"
+echo "   • Automatic entry approval/denial based on thresholds"
+echo "   • Real-time analytics and performance tracking"
+echo "   • Enhanced factory entries with approval status"
+echo ""
+echo "Press Ctrl+C to stop all services"
 echo "==================="
 
-# Start the API server (this will run in foreground)
-python main.py
+# Function to cleanup on exit
+cleanup() {
+    echo ""
+    echo "🛑 Stopping services..."
+    kill $API_PID 2>/dev/null
+    exit 0
+}
+trap cleanup INT
+
+# Start the frontend (this will run in foreground)
+npm run dev

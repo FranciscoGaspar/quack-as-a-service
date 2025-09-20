@@ -51,7 +51,14 @@ router = APIRouter(prefix="/entries", tags=["Personal Entries"])
 
 def _add_computed_fields(entry) -> PersonalEntryResponse:
     """Add computed fields to entry response."""
-    # First validate with base schema (no computed fields)
+    # Ensure approval status is calculated if missing
+    if entry.is_approved is None:
+        try:
+            entry.calculate_and_set_approval_status()
+        except Exception as e:
+            print(f"⚠️  Could not calculate approval status for entry {entry.id}: {e}")
+    
+    # First validate with base schema (includes new approval fields)
     base_data = PersonalEntryBaseResponse.model_validate(entry)
     
     # Fetch user name if user_id is present
