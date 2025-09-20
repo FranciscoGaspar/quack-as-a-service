@@ -68,6 +68,7 @@ class PersonalEntryResponse(PersonalEntryBaseResponse):
     """Schema for personal entry response with computed fields."""
     is_compliant: bool = Field(..., description="Whether all required equipment is present")
     missing_equipment: list[str] = Field(..., description="List of missing equipment items")
+    user_name: Optional[str] = Field(None, description="Name of the user associated with this entry")
 
 
 class EquipmentUpdate(BaseModel):
