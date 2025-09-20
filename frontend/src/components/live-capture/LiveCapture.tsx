@@ -2,7 +2,10 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Camera, Download, RotateCcw } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import axiosClient from "@/lib/axiosClient";
+import { AlertCircle, Camera, CheckCircle, Download, RotateCcw, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 const LoadingLiveCapture = () => {
@@ -36,6 +39,13 @@ export const LiveCapture = () => {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
+  
+  // Form state for upload
+  const [roomName, setRoomName] = useState("");
+  const [userId, setUserId] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<"idle" | "success" | "error">("idle");
+  const [uploadMessage, setUploadMessage] = useState("");
 
   // Initialize camera
   useEffect(() => {
@@ -124,10 +134,63 @@ export const LiveCapture = () => {
     link.click();
   };
 
+  const uploadImage = async () => {
+    if (!capturedImage || !roomName.trim() || !userId.trim()) {
+      setUploadStatus("error");
+      setUploadMessage("Please fill in room name and user ID");
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      setUploadStatus("idle");
+      setUploadMessage("");
+
+      // Convert data URL to File object
+      const response = await fetch(capturedImage);
+      const blob = await response.blob();
+      const file = new File([blob], "captured-image.jpg", { type: "image/jpeg" });
+
+      // Create FormData for multipart upload
+      const formData = new FormData();
+      formData.append("image", file);
+      formData.append("room_name", roomName.trim());
+      formData.append("user_id", userId.trim());
+
+      // Upload to backend
+      const uploadResponse = await axiosClient.post("/entries/upload-image", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      setUploadStatus("success");
+      setUploadMessage("Image uploaded successfully!");
+      
+      // Reset form after successful upload
+      setTimeout(() => {
+        resetCapture();
+      }, 2000);
+
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      setUploadStatus("error");
+      setUploadMessage(
+        error.response?.data?.detail || 
+        error.message || 
+        "Failed to upload image. Please try again."
+      );
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const resetCapture = () => {
     setCapturedImage(null);
     setCountdown(null);
     setIsCapturing(false);
+    setUploadStatus("idle");
+    setUploadMessage("");
   };
 
   if (isLoading) {
@@ -233,6 +296,82 @@ export const LiveCapture = () => {
                 alt="Captured"
                 className="max-w-full h-auto rounded-lg border"
               />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Upload Form */}
+      {capturedImage && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5" />
+              Upload to Backend
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="roomName">Room Name</Label>
+                <Input
+                  id="roomName"
+                  type="text"
+                  placeholder="e.g., Laboratory A"
+                  value={roomName}
+                  onChange={(e) => setRoomName(e.target.value)}
+                  disabled={isUploading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="userId">User ID</Label>
+                <Input
+                  id="userId"
+                  type="number"
+                  placeholder="e.g., 1"
+                  value={userId}
+                  onChange={(e) => setUserId(e.target.value)}
+                  disabled={isUploading}
+                />
+              </div>
+            </div>
+
+            {/* Upload Status */}
+            {uploadStatus !== "idle" && (
+              <div className={`flex items-center gap-2 p-3 rounded-lg ${
+                uploadStatus === "success" 
+                  ? "bg-green-50 text-green-700 border border-green-200" 
+                  : "bg-red-50 text-red-700 border border-red-200"
+              }`}>
+                {uploadStatus === "success" ? (
+                  <CheckCircle className="h-4 w-4" />
+                ) : (
+                  <AlertCircle className="h-4 w-4" />
+                )}
+                <span className="text-sm font-medium">{uploadMessage}</span>
+              </div>
+            )}
+
+            {/* Upload Button */}
+            <div className="flex justify-center">
+              <Button
+                onClick={uploadImage}
+                disabled={isUploading || !roomName.trim() || !userId.trim()}
+                size="lg"
+                className="min-w-40"
+              >
+                {isUploading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload Image
+                  </>
+                )}
+              </Button>
             </div>
           </CardContent>
         </Card>
