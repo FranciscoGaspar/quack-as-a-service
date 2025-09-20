@@ -4,12 +4,11 @@ export type FactoryEntries = {
   room_name: string;
   equipment: Record<string, boolean>;
   image_url: string;
-  id: string;
-  user_id: string;
-  entered_at: Date;
-  created_at: Date;
+  id: number;
+  user_id: number;
+  entered_at: string;
+  created_at: string;
   is_compliant: boolean;
-  missing_equipment: string[];
 };
 
 export const GetFactoryEntries = async () => {
@@ -17,6 +16,6 @@ export const GetFactoryEntries = async () => {
   return data;
 };
 
-export const DeleteFactoryEntry = async (id: string) => {
+export const DeleteFactoryEntry = async (id: number) => {
   await axiosInstance(`/entries/${id}`, { method: "DELETE" });
 };

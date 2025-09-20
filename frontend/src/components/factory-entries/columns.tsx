@@ -6,7 +6,7 @@ import type { FactoryEntries } from "@/services/factoryEntries.service";
 import type { ColumnDef } from "@tanstack/react-table";
 import { CheckCircle2 } from "lucide-react";
 
-export const columns: ColumnDef<FactoryEntries>[] = [
+export const createColumns = (onViewCompliance: (entry: FactoryEntries) => void): ColumnDef<FactoryEntries>[] => [
   {
     accessorKey: "user_id",
     header: "User",
@@ -47,7 +47,7 @@ export const columns: ColumnDef<FactoryEntries>[] = [
     size: 50,
     cell: ({ row }) => {
       const factoryEntry = row.original;
-      return <FactoryEntriesActions factoryEntry={factoryEntry} />;
+      return <FactoryEntriesActions factoryEntry={factoryEntry} onViewCompliance={onViewCompliance} />;
     },
   },
 ];
