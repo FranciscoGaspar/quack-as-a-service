@@ -35,7 +35,7 @@ export const columns: ColumnDef<FactoryEntries>[] = [
   },
   {
     accessorKey: "entered_at",
-    header: "Entrered At",
+    header: "Entered At",
     cell: ({ row }) => {
       const { entered_at } = row.original;
       return formatDate(entered_at);
