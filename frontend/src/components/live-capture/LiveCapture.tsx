@@ -1,38 +1,44 @@
 "use client";
 
+import { ErrorAlert } from "@/components/ErrorAlert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import axiosClient from "@/lib/axiosClient";
-import { AlertCircle, Camera, CheckCircle, Download, RotateCcw, Upload } from "lucide-react";
+import {
+  AlertCircle,
+  Camera,
+  CheckCircle,
+  Download,
+  Loader2,
+  RotateCcw,
+  Upload,
+} from "lucide-react";
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { EquipmentComplianceDisplay } from "./EquipmentComplianceDisplay";
 
 const LoadingLiveCapture = () => {
   return (
-    <div className="flex items-center justify-center h-64">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-        <p>Loading camera...</p>
-      </div>
+    <div className="flex flex-col items-center justify-center gap-4">
+      <Loader2 className="animate-spin text-primary" size={64} />
+      <p className="text-muted-foreground">Loading camera...</p>
     </div>
   );
 };
 
-const EmptyLiveCapture = () => {
-  return (
-    <div className="flex items-center justify-center h-64">
-      <div className="text-center">
-        <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-        <p className="text-muted-foreground">Camera not available</p>
-      </div>
-    </div>
-  );
+type LiveCaptureProps = {
+  location: string;
 };
 
-export const LiveCapture = () => {
+export const LiveCapture = ({ location }: LiveCaptureProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -41,39 +47,41 @@ export const LiveCapture = () => {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
-  
+
   // Form state for upload
-  const [roomName, setRoomName] = useState("");
   const [userId, setUserId] = useState("");
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState<"idle" | "success" | "error">("idle");
+  const [uploadStatus, setUploadStatus] = useState<
+    "idle" | "success" | "error"
+  >("idle");
   const [uploadMessage, setUploadMessage] = useState("");
   const [complianceData, setComplianceData] = useState<any>(null);
   const [showComplianceDialog, setShowComplianceDialog] = useState(false);
   const [hideAfterUpload, setHideAfterUpload] = useState(false);
 
   // Initialize camera
+  // biome-ignore lint/correctness/useExhaustiveDependencies: No Dependencies
   useEffect(() => {
     const initCamera = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        
+
         const mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: { 
+          video: {
             width: { ideal: 1280 },
             height: { ideal: 720 },
-            facingMode: 'environment' // Use back camera if available
+            facingMode: "environment", // Use back camera if available
           },
-          audio: false
+          audio: false,
         });
-        
+
         setStream(mediaStream);
-        
+
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
         }
-        
+
         setIsLoading(false);
       } catch (err) {
         console.error("Error accessing camera:", err);
@@ -87,7 +95,9 @@ export const LiveCapture = () => {
     // Cleanup on unmount
     return () => {
       if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+        for (const track of stream.getTracks()) {
+          track.stop();
+        }
       }
     };
   }, []);
@@ -95,9 +105,9 @@ export const LiveCapture = () => {
   const startCountdown = () => {
     setIsCapturing(true);
     setCountdown(3);
-    
+
     const countdownInterval = setInterval(() => {
-      setCountdown(prev => {
+      setCountdown((prev) => {
         if (prev === null || prev <= 1) {
           clearInterval(countdownInterval);
           captureImage();
@@ -113,7 +123,7 @@ export const LiveCapture = () => {
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    const context = canvas.getContext('2d');
+    const context = canvas.getContext("2d");
 
     if (!context) return;
 
@@ -125,7 +135,7 @@ export const LiveCapture = () => {
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     // Convert canvas to image data URL
-    const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    const imageDataUrl = canvas.toDataURL("image/jpeg", 0.8);
     setCapturedImage(imageDataUrl);
     setIsCapturing(false);
     setHideAfterUpload(false); // Reset hide state for new capture
@@ -134,14 +144,14 @@ export const LiveCapture = () => {
   const downloadImage = () => {
     if (!capturedImage) return;
 
-    const link = document.createElement('a');
-    link.download = `capture-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.jpg`;
+    const link = document.createElement("a");
+    link.download = `capture-${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.jpg`;
     link.href = capturedImage;
     link.click();
   };
 
   const uploadImage = async () => {
-    if (!capturedImage || !roomName.trim() || !userId.trim()) {
+    if (!capturedImage || !userId.trim()) {
       setUploadStatus("error");
       setUploadMessage("Please fill in room name and user ID");
       return;
@@ -155,43 +165,48 @@ export const LiveCapture = () => {
       // Convert data URL to File object
       const response = await fetch(capturedImage);
       const blob = await response.blob();
-      const file = new File([blob], "captured-image.jpg", { type: "image/jpeg" });
+      const file = new File([blob], "captured-image.jpg", {
+        type: "image/jpeg",
+      });
 
       // Create FormData for multipart upload
       const formData = new FormData();
       formData.append("image", file);
-      formData.append("room_name", roomName.trim());
+      formData.append("room_name", location);
       formData.append("user_id", userId.trim());
 
       // Upload to backend
-      const uploadResponse = await axiosClient.post("/entries/upload-image", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
+      const uploadResponse = await axiosClient.post(
+        "/entries/upload-image",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
         },
-      });
+      );
 
       setUploadStatus("success");
       setUploadMessage("Image uploaded successfully!");
-      
+
       // Store compliance data from response and show dialog
       if (uploadResponse.data) {
         setComplianceData(uploadResponse.data);
         setShowComplianceDialog(true);
         setHideAfterUpload(true);
       }
-      
+
       // Reset form fields after successful upload (keep dialog open)
       setTimeout(() => {
         resetFormFields();
       }, 2000);
-
     } catch (error: any) {
       console.error("Upload error:", error);
       setUploadStatus("error");
       setUploadMessage(
-        error.response?.data?.detail || 
-        error.message || 
-        "Failed to upload image. Please try again."
+        error.response?.data?.detail ||
+          error.message ||
+          "Failed to upload image. Please try again.",
       );
     } finally {
       setIsUploading(false);
@@ -210,7 +225,6 @@ export const LiveCapture = () => {
   };
 
   const resetFormFields = () => {
-    setRoomName("");
     setUserId("");
     setUploadStatus("idle");
     setUploadMessage("");
@@ -221,20 +235,7 @@ export const LiveCapture = () => {
   }
 
   if (error) {
-    return (
-      <Card className="w-full max-w-2xl mx-auto">
-        <CardContent className="p-6">
-          <div className="text-center">
-            <Camera className="h-12 w-12 text-destructive mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Camera Error</h3>
-            <p className="text-muted-foreground mb-4">{error}</p>
-            <Button onClick={() => window.location.reload()}>
-              Try Again
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <ErrorAlert />;
   }
 
   return (
@@ -242,24 +243,21 @@ export const LiveCapture = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Camera className="h-5 w-5" />
+            <Camera />
             Live Camera Feed
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="relative">
             <video
-              ref={videoRef}
               autoPlay
-              playsInline
-              muted
               className="w-full h-auto rounded-lg border"
+              muted
+              playsInline
+              ref={videoRef}
             />
-            <canvas
-              ref={canvasRef}
-              className="hidden"
-            />
-            
+            <canvas className="hidden" ref={canvasRef} />
+
             {/* Countdown overlay */}
             {countdown !== null && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
@@ -269,33 +267,33 @@ export const LiveCapture = () => {
               </div>
             )}
           </div>
-          
+
           <div className="flex justify-center mt-4 gap-4">
             <Button
-              onClick={startCountdown}
-              disabled={isCapturing}
-              size="lg"
               className="min-w-32"
+              disabled={isCapturing}
+              onClick={startCountdown}
+              size="lg"
             >
               {isCapturing ? "Capturing..." : "Take Photo"}
             </Button>
-            
+
             {capturedImage && !hideAfterUpload && (
               <>
                 <Button
-                  onClick={downloadImage}
-                  variant="outline"
-                  size="lg"
                   className="min-w-32"
+                  onClick={downloadImage}
+                  size="lg"
+                  variant="outline"
                 >
                   <Download className="h-4 w-4 mr-2" />
                   Download
                 </Button>
                 <Button
-                  onClick={resetCapture}
-                  variant="outline"
-                  size="lg"
                   className="min-w-32"
+                  onClick={resetCapture}
+                  size="lg"
+                  variant="outline"
                 >
                   <RotateCcw className="h-4 w-4 mr-2" />
                   Reset
@@ -314,10 +312,13 @@ export const LiveCapture = () => {
           </CardHeader>
           <CardContent>
             <div className="flex justify-center">
-              <img
-                src={capturedImage}
+              <Image
                 alt="Captured"
                 className="max-w-full h-auto rounded-lg border"
+                height={720}
+                src={capturedImage}
+                unoptimized
+                width={1280}
               />
             </div>
           </CardContent>
@@ -334,38 +335,26 @@ export const LiveCapture = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="roomName">Room Name</Label>
-                <Input
-                  id="roomName"
-                  type="text"
-                  placeholder="e.g., Laboratory A"
-                  value={roomName}
-                  onChange={(e) => setRoomName(e.target.value)}
-                  disabled={isUploading}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="userId">User ID</Label>
-                <Input
-                  id="userId"
-                  type="number"
-                  placeholder="e.g., 1"
-                  value={userId}
-                  onChange={(e) => setUserId(e.target.value)}
-                  disabled={isUploading}
-                />
-              </div>
+            <div className="grid grid-cols-1 gap-4">
+              <Label htmlFor="userId">User ID</Label>
+              <Input
+                disabled={isUploading}
+                onChange={(e) => setUserId(e.target.value)}
+                placeholder="e.g., 1"
+                type="number"
+                value={userId}
+              />
             </div>
 
             {/* Upload Status */}
             {uploadStatus !== "idle" && (
-              <div className={`flex items-center gap-2 p-3 rounded-lg ${
-                uploadStatus === "success" 
-                  ? "bg-green-50 text-green-700 border border-green-200" 
-                  : "bg-red-50 text-red-700 border border-red-200"
-              }`}>
+              <div
+                className={`flex items-center gap-2 p-3 rounded-lg ${
+                  uploadStatus === "success"
+                    ? "bg-green-50 text-green-700 border border-green-200"
+                    : "bg-red-50 text-red-700 border border-red-200"
+                }`}
+              >
                 {uploadStatus === "success" ? (
                   <CheckCircle className="h-4 w-4" />
                 ) : (
@@ -378,10 +367,10 @@ export const LiveCapture = () => {
             {/* Upload Button */}
             <div className="flex justify-center">
               <Button
-                onClick={uploadImage}
-                disabled={isUploading || !roomName.trim() || !userId.trim()}
-                size="lg"
                 className="min-w-40"
+                disabled={isUploading || !userId.trim()}
+                onClick={uploadImage}
+                size="lg"
               >
                 {isUploading ? (
                   <>
@@ -401,7 +390,10 @@ export const LiveCapture = () => {
       )}
 
       {/* Equipment Compliance Dialog */}
-      <Dialog open={showComplianceDialog} onOpenChange={setShowComplianceDialog}>
+      <Dialog
+        onOpenChange={setShowComplianceDialog}
+        open={showComplianceDialog}
+      >
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Equipment Compliance Report</DialogTitle>

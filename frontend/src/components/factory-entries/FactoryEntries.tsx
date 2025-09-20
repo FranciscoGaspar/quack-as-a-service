@@ -4,13 +4,30 @@ import { DataTable } from "@/components/dataTable/DataTable";
 import { ErrorAlert } from "@/components/ErrorAlert";
 import { columns } from "@/components/factory-entries/columns";
 import { useFactoryEntries } from "@/hooks/factory-entries/useFactoryEntries";
+import { DoorOpen, Loader2 } from "lucide-react";
 
 const LoadingFactoryEntries = () => {
-  return <div>Loading Factory Entries</div>;
+  return (
+    <div className="flex items-center justify-center">
+      <Loader2 className="animate-spin text-primary" size={80} />
+    </div>
+  );
 };
 
 const EmptyFactoryEntries = () => {
-  return <div>No Factory Entries Available</div>;
+  return (
+    <div className="flex flex-col gap-4 h-full items-center justify-center">
+      <div className="rounded-full bg-accent w-20 h-20 flex items-center justify-center">
+        <DoorOpen className="stroke-primary" size={40} />
+      </div>
+      <div className="flex flex-col gap-1 text-center">
+        <p className="font-bold">No Factory Entries added yet</p>
+        <p className="text-muted-foreground">
+          Please wait until someone enters the factory.
+        </p>
+      </div>
+    </div>
+  );
 };
 
 export const FactoryEntries = () => {
