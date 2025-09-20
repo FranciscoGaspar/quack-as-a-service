@@ -1,4 +1,4 @@
-import axiosInstance from '@/lib/axiosClient';
+import axiosInstance from "@/lib/axiosClient";
 
 export type FactoryEntries = {
   room_name: string;
@@ -13,10 +13,20 @@ export type FactoryEntries = {
 };
 
 export const GetFactoryEntries = async () => {
-  const { data } = await axiosInstance<FactoryEntries[]>('/entries');
+  const { data } = await axiosInstance<FactoryEntries[]>("/entries");
   return data;
 };
 
 export const DeleteFactoryEntry = async (id: number) => {
-  await axiosInstance(`/entries/${id}`, { method: 'DELETE' });
+  await axiosInstance(`/entries/${id}`, { method: "DELETE" });
+};
+
+export const SendUserQR = async (data: FormData) => {
+  await axiosInstance("/users/detect", {
+    method: "POST",
+    data,
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
 };
