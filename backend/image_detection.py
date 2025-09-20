@@ -2,10 +2,21 @@ import requests
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
+import cv2
 
 import torch
 from PIL import Image
-from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection 
+from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection
+
+# QR Code detection imports
+try:
+    from pyzbar import pyzbar
+    PYZBAR_AVAILABLE = True
+    print("✅ pyzbar loaded - QR code detection enabled")
+except ImportError:
+    PYZBAR_AVAILABLE = False
+    print("⚠️  pyzbar not available - QR code detection disabled")
+    print("💡 To enable QR code detection, install: pip install pyzbar") 
 
 # Global model variables
 model_id = "IDEA-Research/grounding-dino-base"
@@ -44,9 +55,26 @@ def detect_objects_in_image(image, text_queries, threshold=0.32):
     """
     proc, mod = initialize_model()
     
-    inputs = proc(images=image, text=text_queries, return_tensors="pt").to(device)
-    with torch.no_grad():
-        outputs = mod(**inputs)
+    # Ensure image is in RGB format to avoid channel dimension issues
+    if image.mode != 'RGB':
+        print(f"🔄 Converting image from {image.mode} to RGB for model compatibility")
+        image = image.convert('RGB')
+    
+    # Validate image dimensions (some models have minimum size requirements)
+    if image.size[0] < 32 or image.size[1] < 32:
+        print(f"⚠️  Image size {image.size} is very small, this might cause issues")
+    
+    print(f"📏 Image dimensions: {image.size[0]}x{image.size[1]} ({image.mode})")
+    
+    try:
+        inputs = proc(images=image, text=text_queries, return_tensors="pt").to(device)
+        with torch.no_grad():
+            outputs = mod(**inputs)
+    except Exception as e:
+        print(f"❌ Error processing image with model: {e}")
+        print(f"   Image mode: {image.mode}")
+        print(f"   Image size: {image.size}")
+        raise RuntimeError(f"Model processing failed: {str(e)}. Check image format and dimensions.")
     
     results = proc.post_process_grounded_object_detection(
         outputs,
@@ -472,9 +500,10 @@ def _draw_detection_annotations(ax, image, results, text_queries, missing_items)
                 fontsize=14, weight='bold')
     ax.axis('off')
 
-def _draw_detection_annotations_optimized(ax, image, results, text_queries, missing_items, body_parts_results=None):
+def _draw_detection_annotations_optimized(ax, image, results, text_queries, missing_items, body_parts_results=None, qr_codes=None):
     """
     Optimized version of the drawing function that reuses body parts detection if available.
+    Also draws QR codes if provided.
     """
     # Define specific colors for each item type
     item_colors = {
@@ -579,14 +608,40 @@ def _draw_detection_annotations_optimized(ax, image, results, text_queries, miss
                 ax.text(image_width/2, image_height * 0.8, 'MISSING HAND PROTECTION', 
                        fontsize=10, color='red', weight='bold', ha='center',
                        bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
+    
+    # Draw QR codes if provided
+    if qr_codes:
+        for qr_code in qr_codes:
+            position = qr_code.get('position', {})
+            if position:
+                x1 = position.get('x1', position.get('x', 0))
+                y1 = position.get('y1', position.get('y', 0))
+                x2 = position.get('x2', x1 + position.get('width', 50))
+                y2 = position.get('y2', y1 + position.get('height', 50))
+                
+                # Draw QR code bounding box in green
+                qr_rect = patches.Rectangle((x1, y1), x2-x1, y2-y1, 
+                                          linewidth=2, edgecolor='green', facecolor='none')
+                ax.add_patch(qr_rect)
+                
+                # Add QR code label
+                qr_data = qr_code.get('data', 'QR Code')
+                confidence = qr_code.get('confidence', 1.0)
+                ax.text(x1, y1-5, f'QR: {qr_data[:20]}{"..." if len(qr_data) > 20 else ""} ({confidence:.2f})', 
+                       fontsize=10, color='green', weight='bold',
+                       bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
 
-    # Add title
-    ax.set_title(f'Object Detection Results\nQueries: {", ".join(text_queries)}\nMissing items: {", ".join(missing_items)}', 
-                fontsize=14, weight='bold')
+    # Add title with QR code info
+    title_text = f'Object Detection Results\nQueries: {", ".join(text_queries)}\nMissing items: {", ".join(missing_items)}'
+    if qr_codes:
+        qr_count = len(qr_codes)
+        title_text += f'\nQR Codes: {qr_count} detected'
+    
+    ax.set_title(title_text, fontsize=14, weight='bold')
     ax.axis('off')
 
 
-def create_annotated_image(image, results, text_queries, missing_items, body_parts_results=None):
+def create_annotated_image(image, results, text_queries, missing_items, body_parts_results=None, qr_codes=None):
     """
     Create an annotated image with detection boxes and return as bytes.
     Optimized version that reuses body parts detection if available.
@@ -597,6 +652,7 @@ def create_annotated_image(image, results, text_queries, missing_items, body_par
         text_queries: List of text queries used for detection
         missing_items: List of missing items
         body_parts_results: Optional pre-computed body parts results
+        qr_codes: Optional list of detected QR codes to annotate
         
     Returns:
         bytes: Annotated image as bytes for S3 upload
@@ -607,7 +663,7 @@ def create_annotated_image(image, results, text_queries, missing_items, body_par
     try:
         # Display the image and draw annotations
         ax.imshow(image)
-        _draw_detection_annotations_optimized(ax, image, results, text_queries, missing_items, body_parts_results)
+        _draw_detection_annotations_optimized(ax, image, results, text_queries, missing_items, body_parts_results, qr_codes)
         
         # Save to bytes with optimized settings
         from io import BytesIO
@@ -624,7 +680,7 @@ def create_annotated_image(image, results, text_queries, missing_items, body_par
         plt.close(fig)  # Make sure to close figure even if there's an error
         raise e
 
-def create_simple_annotated_image(image, results, missing_items):
+def create_simple_annotated_image(image, results, missing_items, qr_codes=None):
     """
     Create a lightweight annotated image without matplotlib overhead.
     Uses PIL directly for faster processing when detailed annotations aren't needed.
@@ -633,6 +689,7 @@ def create_simple_annotated_image(image, results, missing_items):
         image: PIL Image object
         results: Detection results from the model
         missing_items: List of missing items
+        qr_codes: Optional list of detected QR codes to annotate
         
     Returns:
         bytes: Simple annotated image as bytes
@@ -664,16 +721,153 @@ def create_simple_annotated_image(image, results, missing_items):
             # Draw label
             draw.text((x1, y1-25), f'{label}: {score:.2f}', fill='blue', font=font)
     
+    # Draw QR codes if provided
+    if qr_codes:
+        for qr_code in qr_codes:
+            position = qr_code.get('position', {})
+            if position:
+                x1 = position.get('x1', position.get('x', 0))
+                y1 = position.get('y1', position.get('y', 0))
+                x2 = position.get('x2', x1 + position.get('width', 50))
+                y2 = position.get('y2', y1 + position.get('height', 50))
+                
+                # Draw QR code rectangle
+                draw.rectangle([x1, y1, x2, y2], outline='green', width=2)
+                
+                # Draw QR code label
+                qr_data = qr_code.get('data', 'QR Code')
+                draw.text((x1, y1-25), f'QR: {qr_data[:15]}{"..." if len(qr_data) > 15 else ""}', fill='green', font=font)
+    
     # Add missing items text
+    text_y = 10
     if missing_items:
         missing_text = f"Missing: {', '.join(missing_items)}"
-        draw.text((10, 10), missing_text, fill='red', font=font)
+        draw.text((10, text_y), missing_text, fill='red', font=font)
+        text_y += 30
+    
+    # Add QR code count
+    if qr_codes:
+        qr_text = f"QR Codes: {len(qr_codes)} detected"
+        draw.text((10, text_y), qr_text, fill='green', font=font)
     
     # Convert to bytes
     img_buffer = io.BytesIO()
     annotated_image.save(img_buffer, format='PNG')
     img_buffer.seek(0)
     return img_buffer.getvalue()
+
+
+def detect_qr_codes(image):
+    """
+    Detect and decode QR codes in an image using pyzbar and OpenCV.
+    
+    Args:
+        image: PIL Image object
+        
+    Returns:
+        List of QR code information dictionaries
+    """
+    if not PYZBAR_AVAILABLE:
+        print("⚠️  pyzbar not available - QR code detection skipped")
+        return []
+    
+    try:
+        # Convert PIL image to RGB mode first to handle all formats consistently
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+        
+        # Convert PIL image to numpy array
+        image_array = np.array(image)
+        
+        # Handle different image formats
+        if len(image_array.shape) == 2:
+            # Already grayscale
+            gray = image_array.astype(np.uint8)
+        elif len(image_array.shape) == 3:
+            if image_array.shape[2] == 4:
+                # RGBA image, convert to RGB first
+                opencv_image = cv2.cvtColor(image_array, cv2.COLOR_RGBA2BGR)
+            elif image_array.shape[2] == 3:
+                # RGB image
+                opencv_image = cv2.cvtColor(image_array, cv2.COLOR_RGB2BGR)
+            else:
+                raise ValueError(f"Unsupported image shape: {image_array.shape}")
+            
+            # Convert to grayscale for better QR detection
+            gray = cv2.cvtColor(opencv_image, cv2.COLOR_BGR2GRAY)
+        else:
+            raise ValueError(f"Unsupported image dimensions: {len(image_array.shape)}")
+        
+        # Detect QR codes using pyzbar
+        qr_codes = pyzbar.decode(gray)
+        
+        detected_qr_codes = []
+        
+        for qr_code in qr_codes:
+            # Extract QR code information
+            qr_data = qr_code.data.decode('utf-8')
+            qr_type = qr_code.type
+            
+            # Get bounding box coordinates
+            (x, y, w, h) = qr_code.rect
+            
+            # Calculate confidence - for pyzbar it's binary (detected or not)
+            # We'll use a high confidence since pyzbar is quite accurate
+            confidence = 0.95
+            
+            qr_info = {
+                'data': qr_data,
+                'type': qr_type,
+                'position': {
+                    'x': x,
+                    'y': y,
+                    'width': w,
+                    'height': h,
+                    'x1': x,
+                    'y1': y,
+                    'x2': x + w,
+                    'y2': y + h
+                },
+                'confidence': confidence,
+                'polygon_points': [(point.x, point.y) for point in qr_code.polygon] if qr_code.polygon else []
+            }
+            
+            detected_qr_codes.append(qr_info)
+            print(f"🔍 QR Code detected: '{qr_data}' at position ({x}, {y}, {w}, {h})")
+        
+        if not detected_qr_codes:
+            print("ℹ️  No QR codes detected in the image")
+        else:
+            print(f"✅ Found {len(detected_qr_codes)} QR code(s)")
+        
+        return detected_qr_codes
+        
+    except Exception as e:
+        print(f"❌ Error during QR code detection: {e}")
+        return []
+
+
+def detect_equipment_qr_and_body_parts(image, equipment_queries="a mask. a glove. a hairnet.", threshold=0.32):
+    """
+    Optimized function to detect equipment, QR codes, and body parts in combined calls.
+    
+    Args:
+        image: PIL Image object
+        equipment_queries: String with equipment queries
+        threshold: Detection threshold for object detection
+        
+    Returns:
+        Tuple of (equipment_results, qr_codes, body_parts_results)
+    """
+    # Detect QR codes first (independent operation)
+    qr_codes = detect_qr_codes(image)
+    
+    # Then detect equipment and body parts using existing optimized function
+    equipment_results, body_parts_results = detect_equipment_and_body_parts(
+        image, equipment_queries, threshold
+    )
+    
+    return equipment_results, qr_codes, body_parts_results
 
 
 def visualize_detections(image, results, text_queries, missing_items):
