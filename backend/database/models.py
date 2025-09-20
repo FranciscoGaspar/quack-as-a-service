@@ -98,12 +98,21 @@ class PersonalEntry(Base):
     def is_compliant(self, required_equipment=None):
         """
         Check if entry is compliant with required equipment
-        Default required: mask, gloves (both), hairnet
+        If no required_equipment is provided, use room-specific requirements
         """
         if required_equipment is None:
-            required_equipment = ['mask', 'right_glove', 'left_glove', 'hairnet']
+            # Import here to avoid circular imports
+            from core.room_equipment_config import RoomEquipmentConfig
+            return RoomEquipmentConfig.is_compliant(self.room_name, self.equipment or {})
         
         if not self.equipment:
             return False
         
-        return all(self.equipment.get(item, False) for item in required_equipment)
+        # Handle different glove detection formats for legacy compatibility
+        equipment_copy = self.equipment.copy()
+        if "gloves" in required_equipment and "gloves" not in equipment_copy:
+            left_glove = equipment_copy.get("left_glove", False)
+            right_glove = equipment_copy.get("right_glove", False)
+            equipment_copy["gloves"] = left_glove and right_glove
+        
+        return all(equipment_copy.get(item, False) for item in required_equipment)
