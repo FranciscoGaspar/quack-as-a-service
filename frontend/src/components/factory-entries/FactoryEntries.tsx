@@ -26,5 +26,5 @@ export const FactoryEntries = () => {
     return <EmptyFactoryEntries />;
   }
 
-  return <div>Factory Entries</div>;
+  return <pre>{JSON.stringify(factoryEntries, null, 4)}</pre>;
 };
