@@ -1,17 +1,12 @@
-"use client";
+'use client';
 
-import { ErrorAlert } from "@/components/ErrorAlert";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import axiosClient from "@/lib/axiosClient";
+import { ErrorAlert } from '@/components/ErrorAlert';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { KEYS } from '@/constants/queryKeys';
+import axiosClient from '@/lib/axiosClient';
 import {
   AlertCircle,
   Camera,
@@ -20,10 +15,11 @@ import {
   Loader2,
   RotateCcw,
   Upload,
-} from "lucide-react";
-import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
-import { EquipmentComplianceDisplay } from "./EquipmentComplianceDisplay";
+} from 'lucide-react';
+import Image from 'next/image';
+import { getQueryClient } from '@/lib/getQueryClient';
+import { useEffect, useRef, useState } from 'react';
+import { EquipmentComplianceDisplay } from './EquipmentComplianceDisplay';
 
 const LoadingLiveCapture = () => {
   return (
@@ -49,15 +45,18 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
   const [countdown, setCountdown] = useState<number | null>(null);
 
   // Form state for upload
-  const [userId, setUserId] = useState("");
+  const [userId, setUserId] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<
-    "idle" | "success" | "error"
-  >("idle");
-  const [uploadMessage, setUploadMessage] = useState("");
+    'idle' | 'success' | 'error'
+  >('idle');
+  const [uploadMessage, setUploadMessage] = useState('');
   const [complianceData, setComplianceData] = useState<any>(null);
   const [showComplianceDialog, setShowComplianceDialog] = useState(false);
   const [hideAfterUpload, setHideAfterUpload] = useState(false);
+
+  // Query client for invalidating queries
+  const queryClient = getQueryClient();
 
   // Initialize camera
   // biome-ignore lint/correctness/useExhaustiveDependencies: No Dependencies
@@ -71,7 +70,7 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
           video: {
             width: { ideal: 1280 },
             height: { ideal: 720 },
-            facingMode: "environment", // Use back camera if available
+            facingMode: 'environment', // Use back camera if available
           },
           audio: false,
         });
@@ -84,8 +83,8 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
 
         setIsLoading(false);
       } catch (err) {
-        console.error("Error accessing camera:", err);
-        setError("Unable to access camera. Please check permissions.");
+        console.error('Error accessing camera:', err);
+        setError('Unable to access camera. Please check permissions.');
         setIsLoading(false);
       }
     };
@@ -123,7 +122,7 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    const context = canvas.getContext("2d");
+    const context = canvas.getContext('2d');
 
     if (!context) return;
 
@@ -135,7 +134,7 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     // Convert canvas to image data URL
-    const imageDataUrl = canvas.toDataURL("image/jpeg", 0.8);
+    const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
     setCapturedImage(imageDataUrl);
     setIsCapturing(false);
     setHideAfterUpload(false); // Reset hide state for new capture
@@ -144,50 +143,53 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
   const downloadImage = () => {
     if (!capturedImage) return;
 
-    const link = document.createElement("a");
-    link.download = `capture-${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.jpg`;
+    const link = document.createElement('a');
+    link.download = `capture-${new Date()
+      .toISOString()
+      .slice(0, 19)
+      .replace(/:/g, '-')}.jpg`;
     link.href = capturedImage;
     link.click();
   };
 
   const uploadImage = async () => {
     if (!capturedImage || !userId.trim()) {
-      setUploadStatus("error");
-      setUploadMessage("Please fill in room name and user ID");
+      setUploadStatus('error');
+      setUploadMessage('Please fill in room name and user ID');
       return;
     }
 
     try {
       setIsUploading(true);
-      setUploadStatus("idle");
-      setUploadMessage("");
+      setUploadStatus('idle');
+      setUploadMessage('');
 
       // Convert data URL to File object
       const response = await fetch(capturedImage);
       const blob = await response.blob();
-      const file = new File([blob], "captured-image.jpg", {
-        type: "image/jpeg",
+      const file = new File([blob], 'captured-image.jpg', {
+        type: 'image/jpeg',
       });
 
       // Create FormData for multipart upload
       const formData = new FormData();
-      formData.append("image", file);
-      formData.append("room_name", location);
-      formData.append("user_id", userId.trim());
+      formData.append('image', file);
+      formData.append('room_name', location);
+      formData.append('user_id', userId.trim());
 
       // Upload to backend
       const uploadResponse = await axiosClient.post(
-        "/entries/upload-image",
+        '/entries/upload-image',
         formData,
         {
           headers: {
-            "Content-Type": "multipart/form-data",
+            'Content-Type': 'multipart/form-data',
           },
         },
       );
 
-      setUploadStatus("success");
-      setUploadMessage("Image uploaded successfully!");
+      setUploadStatus('success');
+      setUploadMessage('Image uploaded successfully!');
 
       // Store compliance data from response and show dialog
       if (uploadResponse.data) {
@@ -196,17 +198,20 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
         setHideAfterUpload(true);
       }
 
+      // Invalidate factory entries query to refresh the table
+      queryClient.invalidateQueries({ queryKey: KEYS.factoryEntries });
+
       // Reset form fields after successful upload (keep dialog open)
       setTimeout(() => {
         resetFormFields();
       }, 2000);
     } catch (error: any) {
-      console.error("Upload error:", error);
-      setUploadStatus("error");
+      console.error('Upload error:', error);
+      setUploadStatus('error');
       setUploadMessage(
         error.response?.data?.detail ||
           error.message ||
-          "Failed to upload image. Please try again.",
+          'Failed to upload image. Please try again.',
       );
     } finally {
       setIsUploading(false);
@@ -217,17 +222,17 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
     setCapturedImage(null);
     setCountdown(null);
     setIsCapturing(false);
-    setUploadStatus("idle");
-    setUploadMessage("");
+    setUploadStatus('idle');
+    setUploadMessage('');
     setComplianceData(null);
     setShowComplianceDialog(false);
     setHideAfterUpload(false);
   };
 
   const resetFormFields = () => {
-    setUserId("");
-    setUploadStatus("idle");
-    setUploadMessage("");
+    setUserId('');
+    setUploadStatus('idle');
+    setUploadMessage('');
   };
 
   if (isLoading) {
@@ -273,9 +278,8 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
               className="min-w-32"
               disabled={isCapturing}
               onClick={startCountdown}
-              size="lg"
-            >
-              {isCapturing ? "Capturing..." : "Take Photo"}
+              size="lg">
+              {isCapturing ? 'Capturing...' : 'Take Photo'}
             </Button>
 
             {capturedImage && !hideAfterUpload && (
@@ -284,8 +288,7 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
                   className="min-w-32"
                   onClick={downloadImage}
                   size="lg"
-                  variant="outline"
-                >
+                  variant="outline">
                   <Download className="h-4 w-4 mr-2" />
                   Download
                 </Button>
@@ -293,8 +296,7 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
                   className="min-w-32"
                   onClick={resetCapture}
                   size="lg"
-                  variant="outline"
-                >
+                  variant="outline">
                   <RotateCcw className="h-4 w-4 mr-2" />
                   Reset
                 </Button>
@@ -347,15 +349,14 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
             </div>
 
             {/* Upload Status */}
-            {uploadStatus !== "idle" && (
+            {uploadStatus !== 'idle' && (
               <div
                 className={`flex items-center gap-2 p-3 rounded-lg ${
-                  uploadStatus === "success"
-                    ? "bg-green-50 text-green-700 border border-green-200"
-                    : "bg-red-50 text-red-700 border border-red-200"
-                }`}
-              >
-                {uploadStatus === "success" ? (
+                  uploadStatus === 'success'
+                    ? 'bg-green-50 text-green-700 border border-green-200'
+                    : 'bg-red-50 text-red-700 border border-red-200'
+                }`}>
+                {uploadStatus === 'success' ? (
                   <CheckCircle className="h-4 w-4" />
                 ) : (
                   <AlertCircle className="h-4 w-4" />
@@ -370,8 +371,7 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
                 className="min-w-40"
                 disabled={isUploading || !userId.trim()}
                 onClick={uploadImage}
-                size="lg"
-              >
+                size="lg">
                 {isUploading ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
@@ -389,20 +389,13 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
         </Card>
       )}
 
-      {/* Equipment Compliance Dialog */}
-      <Dialog
-        onOpenChange={setShowComplianceDialog}
-        open={showComplianceDialog}
-      >
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Equipment Compliance Report</DialogTitle>
-          </DialogHeader>
-          {complianceData && (
-            <EquipmentComplianceDisplay complianceData={complianceData} />
-          )}
-        </DialogContent>
-      </Dialog>
+      {complianceData && (
+        <EquipmentComplianceDisplay
+          complianceData={complianceData}
+          showComplianceDialog={showComplianceDialog}
+          setShowComplianceDialog={setShowComplianceDialog}
+        />
+      )}
     </div>
   );
 };

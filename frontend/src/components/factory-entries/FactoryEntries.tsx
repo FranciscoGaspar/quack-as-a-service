@@ -1,10 +1,13 @@
-"use client";
+'use client';
 
-import { DataTable } from "@/components/dataTable/DataTable";
-import { ErrorAlert } from "@/components/ErrorAlert";
-import { columns } from "@/components/factory-entries/columns";
-import { useFactoryEntries } from "@/hooks/factory-entries/useFactoryEntries";
-import { DoorOpen, Loader2 } from "lucide-react";
+import { DataTable } from '@/components/dataTable/DataTable';
+import { ErrorAlert } from '@/components/ErrorAlert';
+import { createColumns } from '@/components/factory-entries/columns';
+import { EquipmentComplianceDisplay } from '@/components/live-capture/EquipmentComplianceDisplay';
+import { useFactoryEntries } from '@/hooks/factory-entries/useFactoryEntries';
+import { DoorOpen, Loader2 } from 'lucide-react';
+import type { FactoryEntries } from '@/services/factoryEntries.service';
+import { useState } from 'react';
 
 const LoadingFactoryEntries = () => {
   return (
@@ -30,8 +33,17 @@ const EmptyFactoryEntries = () => {
   );
 };
 
-export const FactoryEntries = () => {
+export const FactoryEntriesComponent = () => {
   const { data: factoryEntries, isLoading } = useFactoryEntries();
+  const [selectedEntry, setSelectedEntry] = useState<FactoryEntries | null>(
+    null,
+  );
+  const [showComplianceDialog, setShowComplianceDialog] = useState(false);
+
+  const handleViewCompliance = (entry: FactoryEntries) => {
+    setSelectedEntry(entry);
+    setShowComplianceDialog(true);
+  };
 
   if (isLoading) {
     return <LoadingFactoryEntries />;
@@ -45,5 +57,19 @@ export const FactoryEntries = () => {
     return <EmptyFactoryEntries />;
   }
 
-  return <DataTable columns={columns} data={factoryEntries} />;
+  return (
+    <>
+      <DataTable
+        columns={createColumns(handleViewCompliance)}
+        data={factoryEntries}
+      />
+      {selectedEntry && (
+        <EquipmentComplianceDisplay
+          complianceData={selectedEntry}
+          showComplianceDialog={showComplianceDialog}
+          setShowComplianceDialog={setShowComplianceDialog}
+        />
+      )}
+    </>
+  );
 };

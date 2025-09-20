@@ -17,6 +17,16 @@ try:
     import image_detection
     ML_DEPENDENCIES_AVAILABLE = True
     print("✅ ML dependencies loaded - image detection enabled")
+    
+    # Pre-initialize model on startup for faster first request
+    try:
+        print("🚀 Pre-loading ML model for faster first request...")
+        image_detection.initialize_model()
+        print("✅ ML model pre-loaded successfully")
+    except Exception as e:
+        print(f"⚠️  Could not pre-load ML model: {e}")
+        print("💡 Model will be loaded on first request (slower)")
+        
 except ImportError as e:
     print(f"⚠️  ML dependencies not available - image detection disabled: {e}")
     print("💡 To enable image detection, install: pip install torch torchvision transformers")
@@ -145,7 +155,8 @@ async def delete_entry(entry_id: int):
 async def upload_image_and_analyze(
     image: UploadFile = File(..., description="Image file to analyze"),
     room_name: str = Form(..., description="Room name"),
-    user_id: int = Form(..., description="User ID")
+    user_id: int = Form(..., description="User ID (required)"),
+    create_annotated: bool = Form(True, description="Whether to create annotated image (slower but more detailed)")
 ):
     """
     Upload an image, analyze it for security equipment, store in S3, and create database entry.
@@ -153,9 +164,14 @@ async def upload_image_and_analyze(
     This endpoint:
     1. Receives an image file from the frontend
     2. Analyzes the image for security equipment using AI object detection (mask, gloves, hairnet)
-    3. Uploads the image to S3
-    4. Creates a personal entry in the database with detected equipment
+    3. Uploads the annotated image to S3
+    4. Creates a personal entry in the database with detected equipment and provided user
     5. Returns the standard personal entry response with compliance status
+    
+    Notes:
+    - user_id is required - use /detect-user endpoint first to identify user from QR code
+    - This endpoint focuses on equipment detection and entry creation
+    - For user identification via QR codes, use the separate /detect-user endpoint
     """
     try:
         # Validate user exists
@@ -175,6 +191,10 @@ async def upload_image_and_analyze(
         # Convert image bytes to PIL Image for analysis
         try:
             pil_image = Image.open(io.BytesIO(image_bytes))
+            # Ensure image is in RGB format to avoid channel dimension issues
+            if pil_image.mode != 'RGB':
+                print(f"🔄 Converting uploaded image from {pil_image.mode} to RGB for processing")
+                pil_image = pil_image.convert('RGB')
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Invalid image format: {str(e)}")
         
@@ -185,23 +205,30 @@ async def upload_image_and_analyze(
         # Initialize the detection model and perform analysis
         if ML_DEPENDENCIES_AVAILABLE:
             try:
-                print("🤖 Initializing AI detection model...")
-                image_detection.initialize_model()
+                # Check if model is already loaded (faster)
+                if not image_detection.is_model_ready():
+                    print("🤖 Loading AI detection model...")
+                    image_detection.initialize_model()
+                else:
+                    print("🤖 Using pre-loaded AI detection model")
                 
                 print(f"🔍 Analyzing image for safety equipment...")
                 print(f"   Detection queries: {text_queries}")
                 print(f"   Threshold: {detection_threshold}")
                 
-                # Perform object detection
-                detection_results = image_detection.detect_objects_in_image(
+                # Use optimized combined detection for equipment and body parts only
+                equipment_results, body_parts_results = image_detection.detect_equipment_and_body_parts(
                     image=pil_image,
-                    text_queries=text_queries,
+                    equipment_queries=text_queries,
                     threshold=detection_threshold
                 )
                 
                 # Analyze detection results for compliance
                 required_items = ['mask', 'glove', 'hairnet']
-                analysis = image_detection.analyze_detection_results(detection_results, required_items)
+                analysis = image_detection.analyze_detection_results(equipment_results, required_items)
+                
+                # Store results for later use
+                detection_results = equipment_results
                 
             except Exception as e:
                 print(f"❌ Error during image detection: {e}")
@@ -213,8 +240,9 @@ async def upload_image_and_analyze(
                     'missing_items': ['mask', 'glove', 'hairnet']
                 }
                 detection_results = [{'boxes': [], 'scores': [], 'labels': []}]
+                body_parts_results = [{'boxes': [], 'scores': [], 'labels': []}]
         else:
-            print("⚠️  Image detection skipped - ML dependencies not available")
+            print("⚠️  Equipment detection skipped - ML dependencies not available")
             print("📸 Image uploaded successfully, but equipment detection is disabled")
             # Provide default values when ML is not available
             analysis = {
@@ -224,6 +252,7 @@ async def upload_image_and_analyze(
                 'missing_items': ['mask', 'glove', 'hairnet']
             }
             detection_results = [{'boxes': [], 'scores': [], 'labels': []}]
+            body_parts_results = [{'boxes': [], 'scores': [], 'labels': []}]
         
         # Create analysis result in expected format
         analysis_result = {
@@ -238,15 +267,18 @@ async def upload_image_and_analyze(
         
         # Create annotated image with detection boxes for S3 upload
         try:
-            if ML_DEPENDENCIES_AVAILABLE:
+            if ML_DEPENDENCIES_AVAILABLE and create_annotated:
                 print("📸 Creating annotated image with detection boxes...")
                 # Parse text_queries to get individual items for visualization
                 required_items = ['mask', 'glove', 'hairnet']
+                
+                # Use optimized annotation creation with pre-computed body parts
                 annotated_image_bytes = image_detection.create_annotated_image(
                     image=pil_image,
                     results=detection_results,
                     text_queries=required_items,
-                    missing_items=analysis['missing_items']
+                    missing_items=analysis['missing_items'],
+                    body_parts_results=body_parts_results  # Reuse pre-computed results
                 )
                 
                 # Generate filename for annotated image
@@ -255,6 +287,21 @@ async def upload_image_and_analyze(
                 # Upload annotated image to S3
                 image_url = upload_image_bytes_to_s3(annotated_image_bytes, annotated_filename)
                 print(f"✅ Annotated image created and uploaded successfully")
+            elif ML_DEPENDENCIES_AVAILABLE and not create_annotated:
+                # Use fast simple annotation
+                print("📸 Creating simple annotated image...")
+                annotated_image_bytes = image_detection.create_simple_annotated_image(
+                    image=pil_image,
+                    results=detection_results,
+                    missing_items=analysis['missing_items']
+                )
+                
+                # Generate filename for annotated image
+                annotated_filename = f"simple_{image.filename}" if image.filename else "simple_image.png"
+                
+                # Upload annotated image to S3
+                image_url = upload_image_bytes_to_s3(annotated_image_bytes, annotated_filename)
+                print(f"✅ Simple annotated image created and uploaded successfully")
             else:
                 # Fallback: upload original image if ML not available
                 print("📸 Uploading original image (ML not available for annotation)")
@@ -295,6 +342,9 @@ async def upload_image_and_analyze(
             elif 'hairnet' in missing_item.lower():
                 equipment_detected['hairnet'] = False
         
+        # Use the provided user_id (already validated above)
+        final_user_id = user_id
+        
         print(f"🔍 Image analysis completed:")
         print(f"   Total detected: {analysis['total_detected']}")
         print(f"   Compliance: {'✅ COMPLIANT' if analysis['compliance_status'] else '❌ NON-COMPLIANT'}")
@@ -308,7 +358,7 @@ async def upload_image_and_analyze(
         
         # Create database entry
         db_entry = PersonalEntryService.create(
-            user_id=user_id,
+            user_id=final_user_id,
             room_name=room_name,
             equipment=equipment_detected,
             image_url=image_url
