@@ -140,9 +140,15 @@ celerybeat.pid
 .venv
 env/
 venv/
+venv-ml/
 ENV/
 env.bak/
 venv.bak/
+
+# Project-specific virtual environments
+backend/venv/
+backend/venv-ml/
+frontend/node_modules/
 
 # Spyder project settings
 .spyderproject
