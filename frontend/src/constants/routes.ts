@@ -6,4 +6,5 @@ export const ROUTES = {
   reports: "/reports",
   aiChat: "/ai-chat",
   roomConfigurations: "/room-configurations",
+  accidents: "/accidents",
 } as const;

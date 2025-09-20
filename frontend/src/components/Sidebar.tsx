@@ -87,6 +87,17 @@ const groupRoutes: GroupedRoute[] = [
     ],
   },
   {
+    key: "accidents",
+    label: "Accidents",
+    items: [
+      {
+        icon: DoorOpenIcon,
+        title: "Fall Accidents",
+        url: ROUTES.accidents,
+      },
+    ],
+  },
+  {
     key: "settings",
     label: "Settings",
     items: [
