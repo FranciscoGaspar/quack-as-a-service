@@ -4,8 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useRoomConfigurations } from '@/hooks/room-configurations/useRoomConfigurations';
-import { type RoomEquipmentConfiguration } from '@/services/roomConfigurations.service';
-import { Settings, BarChart3 } from 'lucide-react';
+import { Settings } from 'lucide-react';
 
 interface RoomConfigurationsTableProps {
   includeInactive?: boolean;
@@ -78,7 +77,7 @@ export const RoomConfigurationsTable = ({ includeInactive = false }: RoomConfigu
                 <h4 className="font-semibold mb-2">Entry Policy</h4>
                 <div className="flex items-center gap-2">
                   <div className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                    {Object.values(config.equipment_weights).some(level => level === "required") ? "REQUIRED ITEMS MUST BE PRESENT" : "ALL ITEMS RECOMMENDED ONLY"}
+                    {Object.values(config.equipment_weights).some(level => level === 1) ? "REQUIRED ITEMS MUST BE PRESENT" : "ALL ITEMS RECOMMENDED ONLY"}
                   </div>
                 </div>
               </div>
@@ -90,10 +89,10 @@ export const RoomConfigurationsTable = ({ includeInactive = false }: RoomConfigu
                   {Object.entries(config.equipment_weights).map(([equipment, level]) => (
                     <Badge 
                       key={equipment} 
-                      variant={level === "required" ? "destructive" : "secondary"} 
+                      variant={level === 1 ? "destructive" : "secondary"} 
                       className="capitalize"
                     >
-                      {equipment.replace('_', ' ')}: {level?.toUpperCase() || "UNKNOWN"}
+                      {equipment.replace('_', ' ')}: {level === 1 ? "REQUIRED" : "RECOMMENDED"}
                     </Badge>
                   ))}
                 </div>

@@ -108,6 +108,97 @@ class RoomEquipmentConfiguration(Base):
         return score >= self.entry_threshold
 
 
+class EmotionalAnalysis(Base):
+    """Emotional analysis results from AWS Rekognition"""
+    __tablename__ = 'emotional_analyses'
+    
+    id = Column(Integer, primary_key=True)
+    personal_entry_id = Column(Integer, ForeignKey('personal_entries.id'), nullable=False, unique=True)
+    
+    # Analysis metadata
+    faces_detected = Column(Integer, nullable=False, default=0)
+    dominant_emotion = Column(String(50), nullable=True)
+    overall_confidence = Column(Float, nullable=True)
+    image_quality = Column(String(20), nullable=True)  # excellent, good, fair, poor, unknown
+    
+    # Complete analysis results
+    analysis_data = Column(JSONB, nullable=True)  # Store complete Rekognition response
+    recommendations = Column(JSONB, nullable=True)  # Store recommendations array
+    
+    # Timestamps
+    analyzed_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    personal_entry = relationship("PersonalEntry", back_populates="emotional_analysis")
+    
+    def __repr__(self):
+        return f'<EmotionalAnalysis {self.id}: Entry {self.personal_entry_id}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'personal_entry_id': self.personal_entry_id,
+            'faces_detected': self.faces_detected,
+            'dominant_emotion': self.dominant_emotion,
+            'overall_confidence': self.overall_confidence,
+            'image_quality': self.image_quality,
+            'analysis_data': self.analysis_data,
+            'recommendations': self.recommendations,
+            'analyzed_at': self.analyzed_at.isoformat(),
+            'created_at': self.created_at.isoformat()
+        }
+    
+    def set_analysis_results(self, analysis_result):
+        """
+        Set emotional analysis results from Rekognition analysis
+        
+        Args:
+            analysis_result: EmotionalAnalysisResponse object from rekognition_emotions service
+        """
+        # Set basic fields
+        self.faces_detected = analysis_result.faces_detected
+        self.dominant_emotion = analysis_result.dominant_emotion
+        self.overall_confidence = analysis_result.overall_confidence
+        self.image_quality = analysis_result.image_quality
+        
+        # Store complete analysis data
+        self.analysis_data = {
+            'faces_detected': analysis_result.faces_detected,
+            'dominant_emotion': analysis_result.dominant_emotion,
+            'overall_confidence': analysis_result.overall_confidence,
+            'image_quality': analysis_result.image_quality,
+            'analysis_timestamp': analysis_result.analysis_timestamp.isoformat(),
+            'face_analyses': [
+                {
+                    'face_id': face.face_id,
+                    'emotions': [
+                        {
+                            'emotion': emotion.emotion,
+                            'confidence': emotion.confidence,
+                            'label': emotion.emotion
+                        }
+                        for emotion in face.emotions
+                    ],
+                    'bounding_box': face.bounding_box,
+                    'quality': face.quality,
+                    'pose': face.pose,
+                    'age_range': face.age_range,
+                    'gender': face.gender
+                }
+                for face in analysis_result.face_analyses
+            ]
+        }
+        
+        # Store recommendations
+        self.recommendations = analysis_result.recommendations
+        
+        # Mark JSONB columns as modified for SQLAlchemy
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(self, 'analysis_data')
+        flag_modified(self, 'recommendations')
+
+
 class PersonalEntry(Base):
     """Personal entry tracking security equipment when entering rooms"""
     __tablename__ = 'personal_entries'
@@ -126,6 +217,7 @@ class PersonalEntry(Base):
     
     # Relationships
     user = relationship("User", back_populates="personal_entries")
+    emotional_analysis = relationship("EmotionalAnalysis", back_populates="personal_entry", uselist=False, cascade="all, delete-orphan")
     
     def __repr__(self):
         return f'<PersonalEntry {self.id}: User {self.user_id}>'
@@ -142,7 +234,8 @@ class PersonalEntry(Base):
             'approval_reason': self.approval_reason,
             'entered_at': self.entered_at.isoformat(),
             'created_at': self.created_at.isoformat(),
-            'user': self.user.to_dict() if self.user else None
+            'user': self.user.to_dict() if self.user else None,
+            'emotional_analysis': self.emotional_analysis.to_dict() if self.emotional_analysis else None
         }
     
     def set_equipment_status(self, **equipment_status):

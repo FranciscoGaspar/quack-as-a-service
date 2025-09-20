@@ -113,7 +113,7 @@ class PersonalEntryService:
         """Get entry by ID"""
         session = create_session()
         try:
-            return session.query(PersonalEntry).get(entry_id)
+            return session.query(PersonalEntry).options(joinedload(PersonalEntry.emotional_analysis)).get(entry_id)
         finally:
             session.close()
     
@@ -122,7 +122,7 @@ class PersonalEntryService:
         """Get all entries, optionally limited"""
         session = create_session()
         try:
-            query = session.query(PersonalEntry).order_by(desc(PersonalEntry.entered_at))
+            query = session.query(PersonalEntry).options(joinedload(PersonalEntry.emotional_analysis)).order_by(desc(PersonalEntry.entered_at))
             if limit:
                 query = query.limit(limit)
             return query.all()
@@ -146,7 +146,7 @@ class PersonalEntryService:
         """Get all entries for a specific user"""
         session = create_session()
         try:
-            query = session.query(PersonalEntry).filter_by(user_id=user_id).order_by(desc(PersonalEntry.entered_at))
+            query = session.query(PersonalEntry).options(joinedload(PersonalEntry.emotional_analysis)).filter_by(user_id=user_id).order_by(desc(PersonalEntry.entered_at))
             if limit:
                 query = query.limit(limit)
             return query.all()
@@ -158,7 +158,7 @@ class PersonalEntryService:
         """Get all entries for a specific room"""
         session = create_session()
         try:
-            query = session.query(PersonalEntry).filter_by(room_name=room_name).order_by(desc(PersonalEntry.entered_at))
+            query = session.query(PersonalEntry).options(joinedload(PersonalEntry.emotional_analysis)).filter_by(room_name=room_name).order_by(desc(PersonalEntry.entered_at))
             if limit:
                 query = query.limit(limit)
             return query.all()
