@@ -1,4 +1,4 @@
-import { FactoryEntries } from "@/components/factory-entries/FactoryEntries";
+import { FactoryEntriesComponent } from "@/components/factory-entries/FactoryEntries";
 import { PageHeader } from "@/components/PageHeader";
 
 const FactoryEntriesPage = async () => {
@@ -11,7 +11,7 @@ const FactoryEntriesPage = async () => {
         />
       </div>
       <div className="h-full py-6">
-        <FactoryEntries />
+        <FactoryEntriesComponent />
       </div>
     </div>
   );

@@ -3,31 +3,11 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import type { FactoryEntries } from "@/services/factoryEntries.service";
 import { AlertTriangle, CheckCircle, Shield, XCircle } from "lucide-react";
 
-interface EquipmentComplianceData {
-  room_name: string;
-  equipment: {
-    mask: boolean;
-    boots: boolean;
-    hairnet: boolean;
-    hard_hat: boolean;
-    left_glove: boolean;
-    right_glove: boolean;
-    safety_vest: boolean;
-    safety_glasses: boolean;
-  };
-  image_url: string;
-  id: number;
-  user_id: number;
-  entered_at: string;
-  created_at: string;
-  is_compliant: boolean;
-  missing_equipment: string[];
-}
-
 interface EquipmentComplianceDisplayProps {
-  complianceData: EquipmentComplianceData;
+  complianceData: FactoryEntries;
   showComplianceDialog: boolean;
   setShowComplianceDialog: (show: boolean) => void;
 }
@@ -122,7 +102,6 @@ export const EquipmentComplianceDisplay = ({ complianceData, showComplianceDialo
             <div className="space-y-3">
               {Object.entries(equipment).map(([key, isPresent]) => {
                 const label = equipmentLabels[key] || key;
-                const isMissing = missing_equipment.includes(key);
                 
                 return (
                   <div 

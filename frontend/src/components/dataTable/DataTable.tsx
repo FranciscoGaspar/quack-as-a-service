@@ -36,12 +36,14 @@ interface DataTableProps<TData, TValue> {
     filters?: Filters<TData>;
     columnVisibility?: ColumnVisibility<TData>;
   };
+  onRowClick?: (row: TData) => void;
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
   config,
+  onRowClick,
 }: DataTableProps<TData, TValue>) {
   const table = useReactTable({
     data,
@@ -91,6 +93,8 @@ export function DataTable<TData, TValue>({
                 <TableRow
                   data-state={row.getIsSelected() && "selected"}
                   key={row.id}
+                  className={onRowClick ? "cursor-pointer hover:bg-muted/50" : ""}
+                  onClick={() => onRowClick?.(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell className="truncate max-w-0" key={cell.id}>
