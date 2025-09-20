@@ -53,6 +53,11 @@ const groupRoutes: GroupedRoute[] = [
         title: "Live Capture",
         url: ROUTES.liveCapture,
       },
+      {
+        icon: CameraIcon,
+        title: "Reports",
+        url: ROUTES.reports,
+      },
     ],
   },
 ];
