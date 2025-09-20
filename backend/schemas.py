@@ -53,6 +53,23 @@ class PersonalEntryUpdate(BaseModel):
     image_url: Optional[str] = Field(None, max_length=500, description="URL to entry image")
 
 
+class EmotionalAnalysisResponse(BaseModel):
+    """Schema for emotional analysis response."""
+    id: int
+    personal_entry_id: int
+    faces_detected: int = Field(..., description="Number of faces detected")
+    dominant_emotion: Optional[str] = Field(None, description="Primary emotion detected")
+    overall_confidence: Optional[float] = Field(None, description="Confidence score for dominant emotion (0-100)")
+    image_quality: Optional[str] = Field(None, description="Image quality assessment")
+    analysis_data: Optional[Dict[str, Any]] = Field(None, description="Complete analysis data from AWS Rekognition")
+    recommendations: Optional[List[str]] = Field(None, description="Recommendations based on emotional analysis")
+    analyzed_at: datetime
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class PersonalEntryBaseResponse(PersonalEntryBase):
     """Base schema for personal entry response (without computed fields)."""
     id: int
@@ -61,6 +78,8 @@ class PersonalEntryBaseResponse(PersonalEntryBase):
     is_approved: Optional[bool] = Field(None, description="Entry approval status (True=approved, False=denied, None=pending)")
     equipment_score: Optional[float] = Field(None, description="Equipment compliance score (0-100)")
     approval_reason: Optional[str] = Field(None, description="Reason for approval/denial decision")
+    # Emotional analysis relationship
+    emotional_analysis: Optional[EmotionalAnalysisResponse] = Field(None, description="Emotional analysis results")
     entered_at: datetime
     created_at: datetime
 

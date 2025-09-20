@@ -22,6 +22,15 @@ except ImportError as e:
     print(f"⚠️  AWS Bedrock Analytics not available: {e}")
     AI_ANALYTICS_AVAILABLE = False
 
+# Emotional Recognition imports
+try:
+    from services.rekognition_emotions import rekognition_emotions
+    EMOTIONAL_RECOGNITION_AVAILABLE = True
+    print("✅ AWS Rekognition Emotional Analysis service loaded")
+except ImportError as e:
+    print(f"⚠️  AWS Rekognition Emotional Analysis not available: {e}")
+    EMOTIONAL_RECOGNITION_AVAILABLE = False
+
 # Optional ML dependencies - import only if available
 try:
     import image_detection
@@ -94,6 +103,99 @@ async def create_entry(entry: PersonalEntryCreate):
         return _add_computed_fields(db_entry)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/emotional-analysis-summary")
+async def get_all_emotional_analysis(
+    limit: Optional[int] = Query(100, ge=1, le=1000, description="Limit number of results"),
+    emotion_filter: Optional[str] = Query(None, description="Filter by dominant emotion (e.g., 'HAPPY', 'SAD', 'ANGRY')"),
+    min_confidence: Optional[float] = Query(None, ge=0.0, le=100.0, description="Minimum confidence threshold")
+):
+    """
+    Get emotional analysis data for all entries.
+    
+    Returns comprehensive emotional analysis data including:
+    - All entries with emotional analysis
+    - Filtering by emotion type and confidence
+    - Summary statistics
+    - Emotional trends across entries
+    """
+    try:
+        # Get all entries with emotional analysis
+        entries = PersonalEntryService.get_all(limit=limit)
+        
+        # Filter entries that have emotional analysis
+        entries_with_analysis = [entry for entry in entries if entry.emotional_analysis]
+        
+        if not entries_with_analysis:
+            return {
+                "status": "no_data",
+                "message": "No entries with emotional analysis found",
+                "total_entries": len(entries),
+                "entries_with_analysis": 0,
+                "emotional_analysis": []
+            }
+        
+        # Convert to analysis data
+        analysis_data = []
+        emotion_counts = {}
+        confidence_scores = []
+        
+        for entry in entries_with_analysis:
+            analysis = entry.emotional_analysis
+            
+            # Apply filters
+            if emotion_filter and analysis.dominant_emotion != emotion_filter:
+                continue
+            
+            if min_confidence and analysis.overall_confidence < min_confidence:
+                continue
+            
+            analysis_dict = analysis.to_dict()
+            analysis_dict['entry'] = {
+                'id': entry.id,
+                'user_id': entry.user_id,
+                'room_name': entry.room_name,
+                'entered_at': entry.entered_at.isoformat()
+            }
+            
+            analysis_data.append(analysis_dict)
+            
+            # Collect statistics
+            emotion = analysis.dominant_emotion
+            if emotion:
+                emotion_counts[emotion] = emotion_counts.get(emotion, 0) + 1
+            
+            if analysis.overall_confidence:
+                confidence_scores.append(analysis.overall_confidence)
+        
+        # Calculate summary statistics
+        total_analyzed = len(analysis_data)
+        avg_confidence = sum(confidence_scores) / len(confidence_scores) if confidence_scores else 0
+        
+        # Find most common emotion
+        most_common_emotion = max(emotion_counts.items(), key=lambda x: x[1]) if emotion_counts else None
+        
+        return {
+            "status": "success",
+            "summary": {
+                "total_entries": len(entries),
+                "entries_with_analysis": len(entries_with_analysis),
+                "filtered_results": total_analyzed,
+                "average_confidence": round(avg_confidence, 2),
+                "emotion_distribution": emotion_counts,
+                "most_common_emotion": most_common_emotion[0] if most_common_emotion else None,
+                "most_common_emotion_count": most_common_emotion[1] if most_common_emotion else 0
+            },
+            "filters_applied": {
+                "emotion_filter": emotion_filter,
+                "min_confidence": min_confidence
+            },
+            "emotional_analysis": analysis_data
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve emotional analysis data: {str(e)}")
 
 
 @router.get("", response_model=List[PersonalEntryResponse])
@@ -178,6 +280,46 @@ async def delete_entry(entry_id: int):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{entry_id}/emotional-analysis")
+async def get_emotional_analysis(entry_id: int):
+    """
+    Get emotional analysis results for a specific entry.
+    
+    Returns detailed emotional analysis data including:
+    - Faces detected
+    - Dominant emotion and confidence
+    - Image quality assessment
+    - Complete analysis data from AWS Rekognition
+    - Recommendations based on emotional state
+    """
+    try:
+        # Get the entry first to ensure it exists
+        entry = PersonalEntryService.get_by_id(entry_id)
+        if not entry:
+            raise HTTPException(status_code=404, detail="Entry not found")
+        
+        # Check if emotional analysis exists for this entry
+        if not entry.emotional_analysis:
+            return {
+                "status": "no_analysis",
+                "message": "No emotional analysis available for this entry",
+                "entry_id": entry_id,
+                "emotional_analysis": None
+            }
+        
+        # Return the emotional analysis data
+        return {
+            "status": "success",
+            "entry_id": entry_id,
+            "emotional_analysis": entry.emotional_analysis.to_dict()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve emotional analysis: {str(e)}")
 
 
 @router.post("/upload-image", response_model=PersonalEntryResponse)
@@ -390,6 +532,23 @@ async def upload_image_and_analyze(
             for item in analysis['missing_items']:
                 print(f"   ❌ {item}: NOT DETECTED")
         
+        # Perform emotional analysis if service is available
+        emotional_analysis_result = None
+        if EMOTIONAL_RECOGNITION_AVAILABLE:
+            try:
+                print(f"😊 Starting emotional analysis...")
+                emotional_analysis_result = rekognition_emotions.analyze_emotions_from_pil_image(pil_image)
+                print(f"😊 Emotional analysis completed:")
+                print(f"   Faces detected: {emotional_analysis_result.faces_detected}")
+                print(f"   Dominant emotion: {emotional_analysis_result.dominant_emotion}")
+                print(f"   Confidence: {emotional_analysis_result.overall_confidence:.1f}%")
+                print(f"   Image quality: {emotional_analysis_result.image_quality}")
+            except Exception as e:
+                print(f"⚠️  Emotional analysis failed: {e}")
+                emotional_analysis_result = None
+        else:
+            print("⚠️  Emotional analysis skipped - AWS Rekognition not available")
+        
         # Create database entry
         db_entry = PersonalEntryService.create(
             user_id=final_user_id,
@@ -398,8 +557,43 @@ async def upload_image_and_analyze(
             image_url=image_url
         )
         
-        # Return standard personal entry response with computed fields
-        return _add_computed_fields(db_entry)
+        # Add emotional analysis results to the database entry if available
+        if emotional_analysis_result:
+            try:
+                # Import EmotionalAnalysis model
+                from database.models import EmotionalAnalysis
+                
+                # Create emotional analysis record
+                emotional_analysis = EmotionalAnalysis(
+                    personal_entry_id=db_entry.id
+                )
+                emotional_analysis.set_analysis_results(emotional_analysis_result)
+                
+                # Save the emotional analysis to database
+                from database.connection import create_session
+                session = create_session()
+                try:
+                    session.add(emotional_analysis)
+                    session.commit()
+                    print("✅ Emotional analysis results saved to separate table")
+                finally:
+                    session.close()
+            except Exception as e:
+                print(f"⚠️  Failed to save emotional analysis to database: {e}")
+        
+        # Refetch the entry with emotional analysis relationship loaded
+        # This is necessary because the original db_entry was created in a closed session
+        try:
+            entry_with_analysis = PersonalEntryService.get_by_id(db_entry.id)
+            if entry_with_analysis:
+                return _add_computed_fields(entry_with_analysis)
+            else:
+                # Fallback to original entry if refetch fails
+                return _add_computed_fields(db_entry)
+        except Exception as e:
+            print(f"⚠️  Could not refetch entry with emotional analysis: {e}")
+            # Fallback to original entry
+            return _add_computed_fields(db_entry)
         
     except HTTPException:
         raise
