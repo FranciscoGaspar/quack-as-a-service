@@ -34,6 +34,9 @@ DB_POOL_SIZE=10
 DB_MAX_OVERFLOW=20
 DB_POOL_RECYCLE=3600
 
+# Migration Configuration
+RUN_MIGRATIONS=true  # Set to false to skip auto-migrations on startup
+
 # AI Model Configuration
 MODEL_ID=IDEA-Research/grounding-dino-base
 DETECTION_THRESHOLD=0.3
@@ -61,10 +64,22 @@ EOF
     echo ""
 fi
 
-# Step 4: Initialize database
+# Step 4: Initialize database and run migrations
 echo "🗄️  Initializing database..."
 source venv-ml/bin/activate
-python -c "from database import init_db; init_db(); print('✅ Database initialized!')"
+
+# Create basic tables first
+python -c "from database import init_db; init_db(); print('✅ Database tables created!')"
+
+# Run any pending migrations (can be disabled with RUN_MIGRATIONS=false)
+if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
+    echo "📋 Checking for database migrations..."
+    python database/migrate.py
+else
+    echo "⏭️  Skipping migrations (RUN_MIGRATIONS=false)"
+fi
+
+echo "✅ Database initialization complete!"
 
 # Step 5: Test the system
 echo "🧪 Testing the system..."
