@@ -144,34 +144,6 @@ export const FallDetectionResult = ({ result, onNewAnalysis }: FallDetectionResu
             </div>
           </div>
 
-          {/* Detection Details */}
-          {detection_result.fall_detected && (
-            <div className="space-y-3">
-              <h4 className="font-medium">Detection Details</h4>
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <XCircle className="h-4 w-4 text-red-600" />
-                  <span className="font-medium text-red-800">
-                    {detection_result.total_detections} fall incident(s) detected
-                  </span>
-                </div>
-                
-                {detection_result.confidence_scores.length > 0 && (
-                  <div className="space-y-2">
-                    <span className="text-sm font-medium text-red-800">Confidence Scores:</span>
-                    <div className="flex flex-wrap gap-2">
-                      {detection_result.confidence_scores.map((score, index) => (
-                        <Badge key={index} variant="outline" className="text-red-700 border-red-300">
-                          {(score * 100).toFixed(1)}%
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* Technical Details */}
           <div className="space-y-3">
             <h4 className="font-medium">Technical Details</h4>
