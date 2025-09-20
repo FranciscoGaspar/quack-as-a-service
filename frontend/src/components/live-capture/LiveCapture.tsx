@@ -1,15 +1,23 @@
-'use client';
+"use client";
 
-import { ErrorAlert } from '@/components/ErrorAlert';
-import { Alert, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useSendEPI } from '@/hooks/factory-entries/useSendEPI';
-import { useSendQR } from '@/hooks/factory-entries/useSendQR';
-import { Camera, Download, Loader2, QrCode, Shirt } from 'lucide-react';
-import Image from 'next/image';
-import { useEffect, useRef, useState } from 'react';
-import { EquipmentComplianceDisplay } from './EquipmentComplianceDisplay';
+import { ErrorAlert } from "@/components/ErrorAlert";
+import { Alert, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { getRequiredEPIs } from "@/constants/requiredEPIs";
+import { useSendEPI } from "@/hooks/factory-entries/useSendEPI";
+import { useSendQR } from "@/hooks/factory-entries/useSendQR";
+import { Camera, Download, Loader2, QrCode, Shirt } from "lucide-react";
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
+import { EquipmentComplianceDisplay } from "./EquipmentComplianceDisplay";
 
 const LoadingLiveCapture = () => {
   return (
@@ -37,7 +45,7 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
   const [countdown, setCountdown] = useState<number | null>(null);
 
   // Form state for upload
-  const [userId, setUserId] = useState('');
+  const [userId, setUserId] = useState("");
 
   const [complianceData, setComplianceData] = useState<any>(null);
   const [showComplianceDialog, setShowComplianceDialog] = useState(false);
@@ -47,6 +55,7 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
   const { mutateAsync: sendEPI, isPending: pendingEPI } = useSendEPI();
 
   const isUploading = pendingQR || pendingEPI;
+  const requiredEPIs = getRequiredEPIs(location);
 
   // Initialize camera
   // biome-ignore lint/correctness/useExhaustiveDependencies: No Dependencies
@@ -60,7 +69,7 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
           video: {
             width: { ideal: 1280 },
             height: { ideal: 720 },
-            facingMode: 'environment', // Use back camera if available
+            facingMode: "environment", // Use back camera if available
           },
           audio: false,
         });
@@ -73,8 +82,8 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
 
         setIsLoading(false);
       } catch (err) {
-        console.error('Error accessing camera:', err);
-        setError('Unable to access camera. Please check permissions.');
+        console.error("Error accessing camera:", err);
+        setError("Unable to access camera. Please check permissions.");
         setIsLoading(false);
       }
     };
@@ -112,7 +121,7 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    const context = canvas.getContext('2d');
+    const context = canvas.getContext("2d");
 
     if (!context) return;
 
@@ -124,7 +133,7 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     // Convert canvas to image data URL
-    const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    const imageDataUrl = canvas.toDataURL("image/jpeg", 0.8);
     setCapturedImage(imageDataUrl);
     setIsCapturing(false);
     setHideAfterUpload(false); // Reset hide state for new capture
@@ -133,11 +142,11 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
   const downloadImage = () => {
     if (!capturedImage) return;
 
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.download = `capture-${new Date()
       .toISOString()
       .slice(0, 19)
-      .replace(/:/g, '-')}.jpg`;
+      .replace(/:/g, "-")}.jpg`;
     link.href = capturedImage;
     link.click();
   };
@@ -148,12 +157,12 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
     if (idState === 0) {
       const response = await fetch(capturedImage);
       const blob = await response.blob();
-      const file = new File([blob], 'captured-image.jpg', {
-        type: 'image/jpeg',
+      const file = new File([blob], "captured-image.jpg", {
+        type: "image/jpeg",
       });
 
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append("file", file);
 
       const { user_id } = await sendQR(formData);
       setUserId(user_id);
@@ -165,15 +174,15 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
     if (idState === 1) {
       const response = await fetch(capturedImage);
       const blob = await response.blob();
-      const file = new File([blob], 'captured-image.jpg', {
-        type: 'image/jpeg',
+      const file = new File([blob], "captured-image.jpg", {
+        type: "image/jpeg",
       });
 
       // Create FormData for multipart upload
       const formData = new FormData();
-      formData.append('image', file);
-      formData.append('room_name', location);
-      formData.append('user_id', userId);
+      formData.append("image", file);
+      formData.append("room_name", location);
+      formData.append("user_id", userId);
 
       // Upload to backend
       const data = await sendEPI(formData);
@@ -196,6 +205,25 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Location Required EPIs</CardTitle>
+          <CardDescription>
+            <span className="capitalize">{location.replaceAll("-", " ")}</span>{" "}
+            required EPIs are:
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex gap-8">
+          {requiredEPIs.map((epi) => {
+            return (
+              <div className="flex items-center gap-2" key={epi}>
+                <Switch checked disabled />
+                {epi}
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -242,8 +270,9 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
               className="min-w-32"
               disabled={isCapturing}
               onClick={startCountdown}
-              size="lg">
-              {isCapturing ? 'Capturing...' : 'Take Photo'}
+              size="lg"
+            >
+              {isCapturing ? "Capturing..." : "Take Photo"}
             </Button>
 
             {capturedImage && !hideAfterUpload && (
@@ -252,7 +281,8 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
                   className="min-w-32"
                   onClick={downloadImage}
                   size="lg"
-                  variant="outline">
+                  variant="outline"
+                >
                   <Download className="h-4 w-4 mr-2" />
                   Download
                 </Button>
@@ -260,11 +290,12 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
                   className="min-w-40"
                   disabled={isUploading}
                   onClick={uploadImage}
-                  size="lg">
+                  size="lg"
+                >
                   {isUploading ? (
                     <Loader2 className="animate-spin mr-2 text-white" />
                   ) : (
-                    'Upload Image'
+                    "Upload Image"
                   )}
                 </Button>
               </>
