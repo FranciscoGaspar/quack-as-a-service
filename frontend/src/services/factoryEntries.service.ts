@@ -21,12 +21,26 @@ export const DeleteFactoryEntry = async (id: number) => {
   await axiosInstance(`/entries/${id}`, { method: "DELETE" });
 };
 
-export const SendUserQR = async (data: FormData) => {
-  await axiosInstance("/users/detect", {
+export const SendUserQR = async (formData: FormData) => {
+  const { data } = await axiosInstance("/users/detect", {
     method: "POST",
-    data,
+    data: formData,
     headers: {
       "Content-Type": "multipart/form-data",
     },
   });
+
+  return data;
+};
+
+export const SendUserEPI = async (formData: FormData) => {
+  const { data } = await axiosInstance("/entries/upload-image", {
+    method: "POST",
+    data: formData,
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
+  return data;
 };
