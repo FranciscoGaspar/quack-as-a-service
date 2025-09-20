@@ -41,5 +41,16 @@ def downgrade():
     finally:
         session.close()
 
+def main():
+    """Main migration function."""
+    print("🚀 Running migration: Add emotional analysis fields to personal_entries table")
+    
+    try:
+        upgrade()
+        print("✅ Migration completed successfully!")
+    except Exception as e:
+        print(f"❌ Migration failed with error: {e}")
+        raise
+
 if __name__ == "__main__":
-    upgrade()
+    main()

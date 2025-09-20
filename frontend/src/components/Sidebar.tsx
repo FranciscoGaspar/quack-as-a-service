@@ -125,10 +125,11 @@ export const Sidebar = () => {
               <Link href={ROUTES.home}>
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg text-sidebar-primary-foreground bg-gradient-to-r from-blue-500 to-blue-600">
                   <Image
-                    alt=""
-                    height={16}
-                    src="https://quack-as-a-service-bucket.s3.us-east-1.amazonaws.com/ChatGPT+Image+Sept+19+2025+from+Team+Suggestion+(2).png"
-                    width={16}
+                    alt="Quack as a Service"
+                    height={40}
+                    width={40}
+                    src="https://quack-as-a-service-bucket.s3.us-east-1.amazonaws.com/duck_no_back.png"
+                    className="object-contain"
                   />
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
