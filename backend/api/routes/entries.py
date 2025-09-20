@@ -175,7 +175,7 @@ async def upload_image_and_analyze(
         if not image_url:
             # For development, we can continue without S3 upload
             print("Warning: S3 upload failed or not configured. Continuing without image URL.")
-            image_url = None
+            image_url = "https://quack-as-a-service-bucket.s3.us-east-1.amazonaws.com/gloves.jpg"
         
         # Extract equipment detection from analysis
         equipment_detected = analysis_result.get("equipment_detected", {})
