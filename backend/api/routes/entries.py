@@ -102,7 +102,7 @@ async def get_entries(
 ):
     """Get all personal entries."""
     try:
-        entries = PersonalEntryService.get_all(limit=limit)
+        entries = PersonalEntryService.get_all_with_users(limit=limit)
         return [_add_computed_fields(entry) for entry in entries]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -520,7 +520,7 @@ async def generate_custom_analysis(
             )
         
         # Get entries for analysis
-        entries = PersonalEntryService.get_all(limit=limit)
+        entries = PersonalEntryService.get_all_with_users(limit=limit)
         
         if len(entries) < 5:
             raise HTTPException(
@@ -585,7 +585,7 @@ async def get_quick_answer(
             )
         
         # Get entries for analysis
-        entries = PersonalEntryService.get_all(limit=limit)
+        entries = PersonalEntryService.get_all_with_users(limit=limit)
         
         if len(entries) < 5:
             return {
@@ -639,7 +639,7 @@ async def get_ai_insights(
     
     try:
         # Get entries for analysis
-        entries = PersonalEntryService.get_all(limit=limit)
+        entries = PersonalEntryService.get_all_with_users(limit=limit)
         
         if len(entries) < 5:
             raise HTTPException(
@@ -699,7 +699,7 @@ async def get_executive_report(
     
     try:
         # Get entries for analysis
-        entries = PersonalEntryService.get_all(limit=limit)
+        entries = PersonalEntryService.get_all_with_users(limit=limit)
         
         if len(entries) < 20:
             raise HTTPException(
@@ -761,7 +761,7 @@ async def analyze_anomalies(
             )
         
         # Get entries for context
-        entries = PersonalEntryService.get_all(limit=limit)
+        entries = PersonalEntryService.get_all_with_users(limit=limit)
         
         if len(entries) < 5:
             raise HTTPException(
@@ -825,7 +825,7 @@ async def get_quick_insights(
     
     try:
         # Get recent entries
-        entries = PersonalEntryService.get_all(limit=limit)
+        entries = PersonalEntryService.get_all_with_users(limit=limit)
         
         if len(entries) < 5:
             return {
@@ -894,7 +894,7 @@ async def generate_custom_analysis(
             )
         
         # Get entries for analysis
-        entries = PersonalEntryService.get_all(limit=limit)
+        entries = PersonalEntryService.get_all_with_users(limit=limit)
         
         if len(entries) < 5:
             raise HTTPException(
@@ -959,7 +959,7 @@ async def get_quick_answer(
             )
         
         # Get entries for analysis
-        entries = PersonalEntryService.get_all(limit=limit)
+        entries = PersonalEntryService.get_all_with_users(limit=limit)
         
         if len(entries) < 5:
             return {

@@ -31,8 +31,8 @@ except ImportError as e:
     print("💡 Install with: pip install boto3")
     BEDROCK_AVAILABLE = False
 
-from database.services import PersonalEntryService
-from database.models import PersonalEntry
+from database.services import PersonalEntryService, UserService
+from database.models import PersonalEntry, User
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -484,6 +484,70 @@ class BedrockNLPanalytics:
         if worst_room and worst_room[1]["compliance_rate"] < 70:
             critical_issues.append(f"{worst_room[0]} area has critical compliance issues")
         
+        # User/People Analysis
+        user_performance = {}
+        user_stats = defaultdict(lambda: {"entries": 0, "compliant": 0, "violations": [], "rooms_accessed": set(), "equipment_issues": defaultdict(int)})
+        
+        for entry in entries:
+            if entry.user_id and entry.user:
+                user_id = entry.user_id
+                user_name = entry.user.name
+                user_stats[user_id]["user_name"] = user_name
+                user_stats[user_id]["entries"] += 1
+                user_stats[user_id]["rooms_accessed"].add(entry.room_name)
+                
+                if entry.is_compliant():
+                    user_stats[user_id]["compliant"] += 1
+                else:
+                    user_stats[user_id]["violations"].append({
+                        "room": entry.room_name,
+                        "date": entry.entered_at.date().isoformat(),
+                        "equipment": entry.equipment or {}
+                    })
+                    
+                # Track equipment issues per user
+                if entry.equipment:
+                    for equipment, is_present in entry.equipment.items():
+                        if not is_present:
+                            user_stats[user_id]["equipment_issues"][equipment] += 1
+        
+        # Calculate user performance metrics
+        for user_id, stats in user_stats.items():
+            if stats["entries"] > 0:
+                compliance_rate = (stats["compliant"] / stats["entries"]) * 100
+                violation_count = len(stats["violations"])
+                
+                # Risk classification for users
+                risk_level = "CRITICAL" if compliance_rate < 50 else "HIGH" if compliance_rate < 70 else "MEDIUM" if compliance_rate < 85 else "LOW"
+                needs_training = compliance_rate < 80 or violation_count > 3
+                
+                user_performance[user_id] = {
+                    "user_name": stats["user_name"],
+                    "entries": stats["entries"],
+                    "compliant_entries": stats["compliant"],
+                    "violation_count": violation_count,
+                    "compliance_rate": compliance_rate,
+                    "rooms_accessed": len(stats["rooms_accessed"]),
+                    "room_list": list(stats["rooms_accessed"]),
+                    "main_equipment_issues": dict(stats["equipment_issues"]),
+                    "risk_level": risk_level,
+                    "needs_training": needs_training,
+                    "recent_violations": stats["violations"][-3:] if stats["violations"] else []  # Last 3 violations
+                }
+        
+        # Worker insights and alerts
+        worker_alerts = []
+        high_risk_workers = [stats for stats in user_performance.values() if stats["risk_level"] in ["CRITICAL", "HIGH"]]
+        frequent_violators = [stats for stats in user_performance.values() if stats["violation_count"] > 5]
+        new_workers = [stats for stats in user_performance.values() if stats["entries"] <= 5]  # Potentially new workers
+        
+        if high_risk_workers:
+            worker_alerts.append(f"{len(high_risk_workers)} workers have high/critical safety risk levels")
+        if frequent_violators:
+            worker_alerts.append(f"{len(frequent_violators)} workers are frequent safety violators")
+        if new_workers:
+            worker_alerts.append(f"{len(new_workers)} workers may need additional safety training")
+        
         # Business impact metrics
         total_violations = total_entries - compliant_entries
         violation_rate = (total_violations / total_entries * 100) if total_entries > 0 else 0
@@ -498,6 +562,8 @@ class BedrockNLPanalytics:
             "hourly_compliance": hourly_compliance,
             "shift_compliance": shift_compliance,
             "room_performance": room_performance,
+            "user_performance": user_performance,
+            "worker_alerts": worker_alerts,
             "critical_issues": critical_issues,
             "analysis_period": analysis_period,
             "data_quality": "Excellent" if total_entries > 100 else "Good" if total_entries > 50 else "Fair" if total_entries > 20 else "Limited" if total_entries > 0 else "No data",
@@ -506,7 +572,10 @@ class BedrockNLPanalytics:
                 "total_safety_violations": total_violations,
                 "compliance_score": f"{compliance_rate:.1f}%",
                 "needs_immediate_action": compliance_rate < 70,
-                "high_risk_rooms": [room for room, stats in room_performance.items() if stats["risk_level"] in ["CRITICAL", "HIGH"]]
+                "high_risk_rooms": [room for room, stats in room_performance.items() if stats["risk_level"] in ["CRITICAL", "HIGH"]],
+                "total_workers_analyzed": len(user_performance),
+                "high_risk_workers": len(high_risk_workers),
+                "workers_needing_training": len([s for s in user_performance.values() if s["needs_training"]])
             }
         }
     
@@ -718,7 +787,21 @@ BUSINESS IMPACT ASSESSMENT:
 - Compliance Score: {business.get('compliance_score', 'N/A')}
 - Immediate Action Required: {'YES' if business.get('needs_immediate_action', False) else 'NO'}
 - High Risk Areas: {', '.join(business.get('high_risk_rooms', [])) if business.get('high_risk_rooms') else 'None'}
+- Total Workers Analyzed: {business.get('total_workers_analyzed', 'N/A')}
+- High Risk Workers: {business.get('high_risk_workers', 'N/A')}
+- Workers Needing Training: {business.get('workers_needing_training', 'N/A')}
 """
+        
+        # Add detailed worker performance for comprehensive analysis
+        if 'user_performance' in data and data['user_performance']:
+            prompt += f"""
+DETAILED WORKER PERFORMANCE:
+"""
+            # Show top 10 workers by performance (worst first for attention)
+            sorted_workers = sorted(data['user_performance'].items(), key=lambda x: x[1]['compliance_rate'])[:10]
+            for user_id, stats in sorted_workers:
+                training_status = "URGENT TRAINING NEEDED" if stats.get('needs_training') else "Training OK"
+                prompt += f"- {stats['user_name']}: {stats['compliance_rate']:.1f}% compliant, {stats['violation_count']} violations, {stats['rooms_accessed']} areas accessed - {stats.get('risk_level', 'UNKNOWN')} RISK ({training_status})\n"
         
         # Add specific analysis guidance based on question type
         prompt += f"""
@@ -751,6 +834,18 @@ ANALYSIS FOCUS FOR {question_type.upper()}:
 - Identify time-based risk patterns
 - Evaluate shift performance and scheduling impacts
 - Recommend time-based safety interventions"""
+        elif question_type == "worker_performance":
+            prompt += """- Analyze individual worker compliance patterns and behaviors
+- Identify workers requiring immediate attention or training
+- Compare worker performance across different areas and shifts
+- Provide personalized safety improvement recommendations for workers
+- Assess worker risk levels and training effectiveness"""
+        elif question_type == "training_needs":
+            prompt += """- Identify workers and groups requiring safety training
+- Analyze training effectiveness and knowledge gaps
+- Recommend specific training programs and interventions
+- Prioritize training needs by risk level and violation patterns
+- Develop individualized learning and coaching strategies"""
         elif question_type == "recommendations":
             prompt += """- Develop actionable safety improvement strategies
 - Prioritize recommendations by impact and feasibility
@@ -825,6 +920,24 @@ EQUIPMENT VIOLATIONS (PPE MISSING):
             for shift, stats in data['shift_compliance'].items():
                 prompt += f"- {shift.title()} shift: {stats['compliance_rate']:.1f}% compliant ({stats['entries']} entries, {stats.get('violations', 0)} violations)\n"
         
+        # Add worker performance data
+        if 'user_performance' in data and data['user_performance']:
+            prompt += f"\nWORKER PERFORMANCE ANALYSIS:\n"
+            # Show worst performing workers
+            sorted_workers = sorted(data['user_performance'].items(), key=lambda x: x[1]['compliance_rate'])[:5]
+            for user_id, stats in sorted_workers:
+                risk_indicator = f" ({stats['risk_level']} RISK)" if 'risk_level' in stats else ""
+                prompt += f"- {stats['user_name']}: {stats['compliance_rate']:.1f}% compliant ({stats['entries']} entries, {stats['violation_count']} violations){risk_indicator}\n"
+                if stats.get('main_equipment_issues'):
+                    main_issue = max(stats['main_equipment_issues'].items(), key=lambda x: x[1])
+                    prompt += f"  Main issue: {main_issue[0]} ({main_issue[1]} times)\n"
+        
+        # Add worker alerts
+        if 'worker_alerts' in data and data['worker_alerts']:
+            prompt += f"\nWORKER SAFETY ALERTS:\n"
+            for alert in data['worker_alerts']:
+                prompt += f"- {alert}\n"
+        
         # Add critical issues
         if 'critical_issues' in data and data['critical_issues']:
             prompt += f"\nCRITICAL SAFETY ALERTS:\n"
@@ -855,6 +968,10 @@ RESPONSE GUIDELINES FOR {question_type.upper()}:
             prompt += "Focus on safety risks, urgency levels, and immediate actions needed."
         elif question_type == "time_patterns":
             prompt += "Focus on time-based patterns, shift performance, and temporal trends in compliance."
+        elif question_type == "worker_performance":
+            prompt += "Focus on individual worker compliance, identify high-risk workers, and provide worker-specific insights and training recommendations."
+        elif question_type == "training_needs":
+            prompt += "Focus on identifying workers needing training, training gaps, and specific educational interventions."
         elif question_type == "recommendations":
             prompt += "Focus on actionable recommendations, improvement strategies, and next steps."
         else:
@@ -878,6 +995,10 @@ Do not use markdown formatting or code blocks. Provide a clear, professional saf
         """Classify the type of safety compliance question for targeted responses."""
         question_lower = question.lower()
         
+        # People/worker-specific questions
+        if any(people_word in question_lower for people_word in ['worker', 'employee', 'person', 'people', 'user', 'staff', 'team', 'individual', 'who']):
+            return "worker_performance"
+        
         # Equipment-specific questions
         if any(equipment in question_lower for equipment in ['mask', 'glove', 'hairnet', 'glasses', 'equipment']):
             return "equipment_specific"
@@ -893,6 +1014,10 @@ Do not use markdown formatting or code blocks. Provide a clear, professional saf
         # Time-based questions
         if any(time_word in question_lower for time_word in ['hour', 'shift', 'time', 'when', 'trend', 'pattern']):
             return "time_patterns"
+        
+        # Training and management questions
+        if any(training_word in question_lower for training_word in ['training', 'teach', 'learn', 'coach', 'mentor', 'education']):
+            return "training_needs"
         
         # Recommendation questions
         if any(rec_word in question_lower for rec_word in ['improve', 'fix', 'solve', 'recommend', 'should', 'how']):

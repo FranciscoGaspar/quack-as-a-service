@@ -40,6 +40,18 @@ const FACTORY_SAFETY_QUESTIONS = {
     "Are there patterns in safety violations?",
     "When do most safety incidents occur?"
   ],
+  "Worker Performance": [
+    "Which workers have the most safety violations?",
+    "Who are our highest risk workers?",
+    "Which employees need additional safety training?",
+    "How do individual workers compare on safety compliance?"
+  ],
+  "Training Needs": [
+    "Which workers need immediate safety training?",
+    "What training gaps exist in our workforce?",
+    "How effective are our current training programs?",
+    "Who should be prioritized for safety coaching?"
+  ],
   "Recommendations": [
     "How can we improve our safety compliance?",
     "What training programs should we implement?",

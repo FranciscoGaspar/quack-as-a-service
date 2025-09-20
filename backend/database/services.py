@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from sqlalchemy import desc
+from sqlalchemy.orm import joinedload
 from .connection import create_session
 from .models import User, PersonalEntry, RoomEquipmentConfiguration
 
@@ -122,6 +123,18 @@ class PersonalEntryService:
         session = create_session()
         try:
             query = session.query(PersonalEntry).order_by(desc(PersonalEntry.entered_at))
+            if limit:
+                query = query.limit(limit)
+            return query.all()
+        finally:
+            session.close()
+    
+    @staticmethod
+    def get_all_with_users(limit: int = None) -> List[PersonalEntry]:
+        """Get all entries with user relationships eagerly loaded (for AI analysis)"""
+        session = create_session()
+        try:
+            query = session.query(PersonalEntry).options(joinedload(PersonalEntry.user)).order_by(desc(PersonalEntry.entered_at))
             if limit:
                 query = query.limit(limit)
             return query.all()
