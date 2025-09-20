@@ -4,20 +4,21 @@ import { useState } from "react";
 import { 
   AlertTriangle, 
   CheckCircle, 
-  XCircle, 
-  Clock, 
   MapPin, 
   User, 
   Eye,
   Download,
-  RotateCcw
+  RotateCcw,
+  FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
 import type { FallDetectionResponse } from "@/services/fallDetection.service";
+import { type CustomAnalysisResponse } from "@/services/aiAnalytics.service";
 
 interface FallDetectionResultProps {
   result: FallDetectionResponse;
@@ -33,12 +34,6 @@ export const FallDetectionResult = ({ result, onNewAnalysis }: FallDetectionResu
 
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString();
-  };
-
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toFixed(1).padStart(4, '0')}`;
   };
 
   const handleViewVideo = (url: string, title: string) => {
@@ -117,14 +112,6 @@ export const FallDetectionResult = ({ result, onNewAnalysis }: FallDetectionResu
                   <span className="text-muted-foreground">{result.video_filename}</span>
                 </div>
               )}
-              
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                <span className="font-medium">Duration:</span>
-                <span className="text-muted-foreground">
-                  {formatDuration(detection_result.video_duration)}
-                </span>
-              </div>
               
               {result.location && (
                 <div className="flex items-center gap-2">
