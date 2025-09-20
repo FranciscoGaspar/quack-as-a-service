@@ -1,7 +1,6 @@
 "use client";
 
 import { ErrorAlert } from "@/components/ErrorAlert";
-import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,7 +13,8 @@ import { Switch } from "@/components/ui/switch";
 import { getRequiredEPIs } from "@/constants/requiredEPIs";
 import { useSendEPI } from "@/hooks/factory-entries/useSendEPI";
 import { useSendQR } from "@/hooks/factory-entries/useSendQR";
-import { Camera, Download, Loader2, QrCode, Shirt } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Loader2, QrCode, Shirt } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { EquipmentComplianceDisplay } from "./EquipmentComplianceDisplay";
@@ -139,47 +139,29 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
     setHideAfterUpload(false); // Reset hide state for new capture
   };
 
-  const downloadImage = () => {
-    if (!capturedImage) return;
-
-    const link = document.createElement("a");
-    link.download = `capture-${new Date()
-      .toISOString()
-      .slice(0, 19)
-      .replace(/:/g, "-")}.jpg`;
-    link.href = capturedImage;
-    link.click();
-  };
-
   const uploadImage = async () => {
     if (!capturedImage) return;
 
-    if (idState === 0) {
-      const response = await fetch(capturedImage);
-      const blob = await response.blob();
-      const file = new File([blob], "captured-image.jpg", {
-        type: "image/jpeg",
-      });
+    const response = await fetch(capturedImage);
+    const blob = await response.blob();
+    const file = new File([blob], "captured-image.jpg", {
+      type: "image/jpeg",
+    });
 
-      const formData = new FormData();
+    const formData = new FormData();
+
+    if (idState === 0) {
       formData.append("file", file);
 
       const { user_id } = await sendQR(formData);
       setUserId(user_id);
       setIdState(1);
+      setCapturedImage(null);
 
       return;
     }
 
     if (idState === 1) {
-      const response = await fetch(capturedImage);
-      const blob = await response.blob();
-      const file = new File([blob], "captured-image.jpg", {
-        type: "image/jpeg",
-      });
-
-      // Create FormData for multipart upload
-      const formData = new FormData();
       formData.append("image", file);
       formData.append("room_name", location);
       formData.append("user_id", userId);
@@ -191,6 +173,9 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
         setComplianceData(data);
         setShowComplianceDialog(true);
         setHideAfterUpload(true);
+        setCapturedImage(null);
+        setIdState(0);
+        setUserId("");
       }
     }
   };
@@ -227,28 +212,38 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Camera />
-            Live Camera Feed
+            {idState === 0 && (
+              <>
+                <QrCode />
+                Show your QR Code
+              </>
+            )}
+            {idState === 1 && (
+              <>
+                <Shirt />
+                Show your EPIs
+              </>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {idState === 0 && (
-            <Alert>
-              <QrCode />
-              <AlertTitle>Show your QR Code</AlertTitle>
-            </Alert>
-          )}
-
-          {idState === 1 && (
-            <Alert>
-              <Shirt />
-              <AlertTitle>Show your EPIs</AlertTitle>
-            </Alert>
-          )}
           <div className="relative">
+            {capturedImage && (
+              <Image
+                alt="Captured"
+                className="max-w-full h-auto rounded-lg"
+                height={720}
+                src={capturedImage}
+                unoptimized
+                width={1280}
+              />
+            )}
             <video
               autoPlay
-              className="w-full h-auto rounded-lg border"
+              className={cn(
+                "w-full h-auto rounded-lg",
+                !capturedImage ? "block" : "hidden",
+              )}
               muted
               playsInline
               ref={videoRef}
@@ -266,64 +261,22 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
           </div>
 
           <div className="flex justify-center mt-4 gap-4">
-            <Button
-              className="min-w-32"
-              disabled={isCapturing}
-              onClick={startCountdown}
-              size="lg"
-            >
+            <Button disabled={isCapturing} onClick={startCountdown} size="lg">
               {isCapturing ? "Capturing..." : "Take Photo"}
             </Button>
 
             {capturedImage && !hideAfterUpload && (
-              <>
-                <Button
-                  className="min-w-32"
-                  onClick={downloadImage}
-                  size="lg"
-                  variant="outline"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Download
-                </Button>
-                <Button
-                  className="min-w-40"
-                  disabled={isUploading}
-                  onClick={uploadImage}
-                  size="lg"
-                >
-                  {isUploading ? (
-                    <Loader2 className="animate-spin mr-2 text-white" />
-                  ) : (
-                    "Upload Image"
-                  )}
-                </Button>
-              </>
+              <Button disabled={isUploading} onClick={uploadImage} size="lg">
+                {isUploading ? (
+                  <Loader2 className="animate-spin mr-2 text-white" />
+                ) : (
+                  "Upload Image"
+                )}
+              </Button>
             )}
           </div>
         </CardContent>
       </Card>
-
-      {/* Captured Image Preview */}
-      {capturedImage && !hideAfterUpload && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Captured Image</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex justify-center">
-              <Image
-                alt="Captured"
-                className="max-w-full h-auto rounded-lg border"
-                height={720}
-                src={capturedImage}
-                unoptimized
-                width={1280}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {complianceData && (
         <EquipmentComplianceDisplay
