@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { KEYS } from "@/constants/queryKeys";
 import axiosClient from "@/lib/axiosClient";
+import { getQueryClient } from "@/lib/getQueryClient";
 import { AlertCircle, Camera, CheckCircle, Download, RotateCcw, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { EquipmentComplianceDisplay } from "./EquipmentComplianceDisplay";
@@ -50,6 +52,9 @@ export const LiveCapture = () => {
   const [complianceData, setComplianceData] = useState<any>(null);
   const [showComplianceDialog, setShowComplianceDialog] = useState(false);
   const [hideAfterUpload, setHideAfterUpload] = useState(false);
+  
+  // Query client for invalidating queries
+  const queryClient = getQueryClient();
 
   // Initialize camera
   useEffect(() => {
@@ -178,6 +183,9 @@ export const LiveCapture = () => {
         setShowComplianceDialog(true);
         setHideAfterUpload(true);
       }
+      
+      // Invalidate factory entries query to refresh the table
+      queryClient.invalidateQueries({ queryKey: KEYS.factoryEntries });
       
       // Reset form fields after successful upload (keep dialog open)
       setTimeout(() => {
