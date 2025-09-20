@@ -1,23 +1,13 @@
 'use client';
 
 import { ErrorAlert } from '@/components/ErrorAlert';
+import { Alert, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { KEYS } from '@/constants/queryKeys';
-import axiosClient from '@/lib/axiosClient';
-import {
-  AlertCircle,
-  Camera,
-  CheckCircle,
-  Download,
-  Loader2,
-  RotateCcw,
-  Upload,
-} from 'lucide-react';
+import { useSendEPI } from '@/hooks/factory-entries/useSendEPI';
+import { useSendQR } from '@/hooks/factory-entries/useSendQR';
+import { Camera, Download, Loader2, QrCode, Upload } from 'lucide-react';
 import Image from 'next/image';
-import { getQueryClient } from '@/lib/getQueryClient';
 import { useEffect, useRef, useState } from 'react';
 import { EquipmentComplianceDisplay } from './EquipmentComplianceDisplay';
 
@@ -35,6 +25,8 @@ type LiveCaptureProps = {
 };
 
 export const LiveCapture = ({ location }: LiveCaptureProps) => {
+  const [idState, setIdState] = useState(0);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -47,16 +39,13 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
   // Form state for upload
   const [userId, setUserId] = useState('');
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState<
-    'idle' | 'success' | 'error'
-  >('idle');
-  const [uploadMessage, setUploadMessage] = useState('');
+
   const [complianceData, setComplianceData] = useState<any>(null);
   const [showComplianceDialog, setShowComplianceDialog] = useState(false);
   const [hideAfterUpload, setHideAfterUpload] = useState(false);
 
-  // Query client for invalidating queries
-  const queryClient = getQueryClient();
+  const { mutateAsync: sendQR } = useSendQR();
+  const { mutateAsync: sendEPI } = useSendEPI();
 
   // Initialize camera
   // biome-ignore lint/correctness/useExhaustiveDependencies: No Dependencies
@@ -153,16 +142,30 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
   };
 
   const uploadImage = async () => {
+    if (!capturedImage) return;
+
+    if (idState === 0) {
+      const response = await fetch(capturedImage);
+      const blob = await response.blob();
+      const file = new File([blob], 'captured-image.jpg', {
+        type: 'image/jpeg',
+      });
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const x = await sendQR(formData);
+      console.log(x);
+
+      return;
+    }
+
     if (!capturedImage || !userId.trim()) {
-      setUploadStatus('error');
-      setUploadMessage('Please fill in room name and user ID');
       return;
     }
 
     try {
       setIsUploading(true);
-      setUploadStatus('idle');
-      setUploadMessage('');
 
       // Convert data URL to File object
       const response = await fetch(capturedImage);
@@ -178,61 +181,20 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
       formData.append('user_id', userId.trim());
 
       // Upload to backend
-      const uploadResponse = await axiosClient.post(
-        '/entries/upload-image',
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        },
-      );
-
-      setUploadStatus('success');
-      setUploadMessage('Image uploaded successfully!');
+      const x = await sendEPI(formData);
+      console.log(x);
 
       // Store compliance data from response and show dialog
-      if (uploadResponse.data) {
-        setComplianceData(uploadResponse.data);
+      if (x.data) {
+        setComplianceData(x.data);
         setShowComplianceDialog(true);
         setHideAfterUpload(true);
       }
-
-      // Invalidate factory entries query to refresh the table
-      queryClient.invalidateQueries({ queryKey: KEYS.factoryEntries });
-
-      // Reset form fields after successful upload (keep dialog open)
-      setTimeout(() => {
-        resetFormFields();
-      }, 2000);
     } catch (error: any) {
       console.error('Upload error:', error);
-      setUploadStatus('error');
-      setUploadMessage(
-        error.response?.data?.detail ||
-          error.message ||
-          'Failed to upload image. Please try again.',
-      );
     } finally {
       setIsUploading(false);
     }
-  };
-
-  const resetCapture = () => {
-    setCapturedImage(null);
-    setCountdown(null);
-    setIsCapturing(false);
-    setUploadStatus('idle');
-    setUploadMessage('');
-    setComplianceData(null);
-    setShowComplianceDialog(false);
-    setHideAfterUpload(false);
-  };
-
-  const resetFormFields = () => {
-    setUserId('');
-    setUploadStatus('idle');
-    setUploadMessage('');
   };
 
   if (isLoading) {
@@ -252,7 +214,13 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
             Live Camera Feed
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {idState === 0 && (
+            <Alert>
+              <QrCode />
+              <AlertTitle>Show your QR Code</AlertTitle>
+            </Alert>
+          )}
           <div className="relative">
             <video
               autoPlay
@@ -293,12 +261,21 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
                   Download
                 </Button>
                 <Button
-                  className="min-w-32"
-                  onClick={resetCapture}
-                  size="lg"
-                  variant="outline">
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Reset
+                  className="min-w-40"
+                  disabled={isUploading}
+                  onClick={uploadImage}
+                  size="lg">
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="animate-spin mr-2 text-white" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload />
+                      Upload Image
+                    </>
+                  )}
                 </Button>
               </>
             )}
@@ -327,73 +304,11 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
         </Card>
       )}
 
-      {/* Upload Form */}
-      {capturedImage && !hideAfterUpload && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5" />
-              Upload to Backend
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-4">
-              <Label htmlFor="userId">User ID</Label>
-              <Input
-                disabled={isUploading}
-                onChange={(e) => setUserId(e.target.value)}
-                placeholder="e.g., 1"
-                type="number"
-                value={userId}
-              />
-            </div>
-
-            {/* Upload Status */}
-            {uploadStatus !== 'idle' && (
-              <div
-                className={`flex items-center gap-2 p-3 rounded-lg ${
-                  uploadStatus === 'success'
-                    ? 'bg-green-50 text-green-700 border border-green-200'
-                    : 'bg-red-50 text-red-700 border border-red-200'
-                }`}>
-                {uploadStatus === 'success' ? (
-                  <CheckCircle className="h-4 w-4" />
-                ) : (
-                  <AlertCircle className="h-4 w-4" />
-                )}
-                <span className="text-sm font-medium">{uploadMessage}</span>
-              </div>
-            )}
-
-            {/* Upload Button */}
-            <div className="flex justify-center">
-              <Button
-                className="min-w-40"
-                disabled={isUploading || !userId.trim()}
-                onClick={uploadImage}
-                size="lg">
-                {isUploading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload Image
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {complianceData && (
         <EquipmentComplianceDisplay
           complianceData={complianceData}
-          showComplianceDialog={showComplianceDialog}
           setShowComplianceDialog={setShowComplianceDialog}
+          showComplianceDialog={showComplianceDialog}
         />
       )}
     </div>
