@@ -230,19 +230,11 @@ def analyze_detection_results(results, required_items):
         'compliance_status': len(missing_items) == 0
     }
 
-def visualize_detections(image, results, text_queries, missing_items):
+def _draw_detection_annotations(ax, image, results, text_queries, missing_items):
     """
-    Visualize object detection results by drawing bounding boxes on the image.
-    
-    Args:
-        image: PIL Image object
-        results: Detection results from the model
-        text_queries: List of text queries used for detection
-        missing_items: List of missing items
+    Helper function to draw detection annotations on a matplotlib axis.
+    Contains all the drawing logic extracted from visualize_detections.
     """
-    fig, ax = plt.subplots(1, 1, figsize=(12, 8))
-    ax.imshow(image)
-    
     # Define specific colors for each item type
     item_colors = {
         'glove': 'orange',
@@ -403,9 +395,66 @@ def visualize_detections(image, results, text_queries, missing_items):
                        fontsize=10, color='red', weight='bold', ha='center',
                        bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
 
+    # Add title
     ax.set_title(f'Object Detection Results\nQueries: {", ".join(text_queries)}\nMissing items: {", ".join(missing_items)}', 
                 fontsize=14, weight='bold')
     ax.axis('off')
+
+
+def create_annotated_image(image, results, text_queries, missing_items):
+    """
+    Create an annotated image with detection boxes and return as bytes.
+    Reuses the existing visualization logic from visualize_detections.
+    
+    Args:
+        image: PIL Image object
+        results: Detection results from the model
+        text_queries: List of text queries used for detection
+        missing_items: List of missing items
+        
+    Returns:
+        bytes: Annotated image as bytes for S3 upload
+    """
+    # Create matplotlib figure and axis
+    fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+    
+    try:
+        # Display the image and draw annotations
+        ax.imshow(image)
+        _draw_detection_annotations(ax, image, results, text_queries, missing_items)
+        
+        # Save to bytes instead of showing
+        from io import BytesIO
+        img_buffer = BytesIO()
+        plt.tight_layout()
+        plt.savefig(img_buffer, format='png', bbox_inches='tight', dpi=150)
+        img_buffer.seek(0)
+        image_bytes = img_buffer.getvalue()
+        plt.close(fig)  # Important: close the figure to free memory
+        
+        return image_bytes
+        
+    except Exception as e:
+        plt.close(fig)  # Make sure to close figure even if there's an error
+        raise e
+
+
+def visualize_detections(image, results, text_queries, missing_items):
+    """
+    Visualize object detection results by drawing bounding boxes on the image.
+    Now reuses the same drawing logic as create_annotated_image.
+    
+    Args:
+        image: PIL Image object
+        results: Detection results from the model
+        text_queries: List of text queries used for detection
+        missing_items: List of missing items
+    """
+    fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+    ax.imshow(image)
+    
+    # Use the shared drawing logic
+    _draw_detection_annotations(ax, image, results, text_queries, missing_items)
     
     plt.tight_layout()
     plt.show()

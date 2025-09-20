@@ -1,11 +1,18 @@
 # Optional ML Dependencies for Object Detection
 # Install these separately if you need object detection features
 
-# PyTorch (CPU version - smaller download)
-torch>=1.9.0 --index-url https://download.pytorch.org/whl/cpu
-torchvision>=0.10.0 --index-url https://download.pytorch.org/whl/cpu
+# PyTorch (CPU version)
+torch>=1.9.0
+torchvision>=0.10.0
 
 # Transformers for GroundingDINO
 transformers>=4.20.0
 
+# Compatibility: Use NumPy 1.x for better PyTorch compatibility
+numpy<2
+
+# OpenCV compatible version
+opencv-python>=4.5.0,<4.12.0
+
 # Install with: pip install -r requirements-ml.txt
+# For PyTorch with specific index: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
