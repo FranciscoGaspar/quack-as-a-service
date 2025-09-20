@@ -40,7 +40,7 @@ class RoomEquipmentConfigurationSeeder(BaseSeeder):
                     "equipment_weights": {
                         "mask": "required",
                         "gloves": "required", 
-                        "hairnet": "required",
+                        "hairnet": "recommended",
                     },
                     "entry_threshold": 5.0,
                     "description": "Production Floor - High safety requirements for manufacturing operations",

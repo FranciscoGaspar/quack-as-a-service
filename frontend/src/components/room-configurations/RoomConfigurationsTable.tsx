@@ -77,7 +77,7 @@ export const RoomConfigurationsTable = ({ includeInactive = false }: RoomConfigu
                 <h4 className="font-semibold mb-2">Entry Policy</h4>
                 <div className="flex items-center gap-2">
                   <div className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                    {Object.values(config.equipment_weights).some(level => level === 1) ? "REQUIRED ITEMS MUST BE PRESENT" : "ALL ITEMS RECOMMENDED ONLY"}
+                    {Object.values(config.equipment_weights).some(level => level === "required") ? "REQUIRED ITEMS MUST BE PRESENT" : "ALL ITEMS RECOMMENDED ONLY"}
                   </div>
                 </div>
               </div>
@@ -87,12 +87,14 @@ export const RoomConfigurationsTable = ({ includeInactive = false }: RoomConfigu
                 <h4 className="font-semibold mb-2">Equipment Requirements</h4>
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(config.equipment_weights).map(([equipment, level]) => (
+
+  
                     <Badge 
                       key={equipment} 
-                      variant={level === 1 ? "destructive" : "secondary"} 
+                      variant={level === "required" ? "destructive" : "secondary"} 
                       className="capitalize"
                     >
-                      {equipment.replace('_', ' ')}: {level === 1 ? "REQUIRED" : "RECOMMENDED"}
+                      {equipment.replace('_', ' ')}: {level}
                     </Badge>
                   ))}
                 </div>

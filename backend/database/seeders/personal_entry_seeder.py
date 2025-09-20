@@ -170,11 +170,7 @@ class PersonalEntrySeeder(BaseSeeder):
             for item in recommended_items:
                 equipment[item] = random.random() < 0.2  # 20% chance
         
-        # Add some additional equipment that might be detected
-        additional_equipment = ["mask", "right_glove", "left_glove", "hairnet", "safety_glasses", "hard_hat", "safety_vest", "boots"]
-        for item in additional_equipment:
-            if item not in equipment:
-                equipment[item] = random.random() < 0.1  # 10% chance of random detection
+        # Only use equipment defined in the room configurations - no additional equipment
         
         return equipment
     

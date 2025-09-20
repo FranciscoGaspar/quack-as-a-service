@@ -3,7 +3,7 @@ import axiosInstance from "@/lib/axiosClient";
 export type RoomEquipmentConfiguration = {
   id: number;
   room_name: string;
-  equipment_weights: Record<string, number>;
+  equipment_weights: Record<string, string>;
   entry_threshold: number;
   is_active: boolean;
   description: string | null;
@@ -151,5 +151,3 @@ export const getRoomConfigurationsAnalytics =
     );
     return data;
   };
-
-
