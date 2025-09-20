@@ -3,11 +3,6 @@
 echo "🦆 Starting Quack as a Service..."
 echo "================================="
 
-# Step 1: Start PostgreSQL
-echo "📦 Starting PostgreSQL database..."
-docker-compose up -d db
-sleep 5
-
 # Step 2: Check if backend is set up with ML dependencies
 cd backend
 if [ ! -d "venv-ml" ]; then
@@ -21,6 +16,7 @@ else
     echo "✅ Backend ML environment already exists!"
     source venv-ml/bin/activate
     pip install -r requirements.txt  # Update dependencies
+    pip install -r requirements-ml.txt
     echo "✅ Dependencies updated!"
 fi
 
@@ -29,7 +25,7 @@ if [ ! -f ".env" ]; then
     echo "⚙️  Creating .env file..."
     cat > .env << 'EOF'
 # Database Configuration
-DATABASE_URL=postgresql://quack:quack@localhost:5432/quack
+DATABASE_URL=postgresql://quack:quackquack@quack.czgwue42qc30.us-east-1.rds.amazonaws.com:5432?sslmode=require
 DB_POOL_SIZE=10
 DB_MAX_OVERFLOW=20
 DB_POOL_RECYCLE=3600
@@ -69,7 +65,7 @@ echo "🗄️  Initializing database..."
 source venv-ml/bin/activate
 
 # Create basic tables first
-python -c "from database import init_db; init_db(); print('✅ Database tables created!')"
+python -c "from database.connection import init_db; init_db(); print('✅ Database tables created!')"
 
 # Run any pending migrations (can be disabled with RUN_MIGRATIONS=false)
 if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
@@ -89,6 +85,7 @@ echo "✅ Database initialization complete!"
 echo "🧪 Testing the system..."
 python -c "
 from database.services import UserService, PersonalEntryService, RoomEquipmentConfigurationService
+
 users = UserService.get_all()
 entries = PersonalEntryService.get_all()
 configs = RoomEquipmentConfigurationService.get_all()
