@@ -32,6 +32,11 @@ type LiveCaptureProps = {
   location: string;
 };
 
+type UserType = {
+  user_id: string;
+  name: string;
+};
+
 export const LiveCapture = ({ location }: LiveCaptureProps) => {
   const [idState, setIdState] = useState(0);
 
@@ -45,7 +50,7 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
   const [countdown, setCountdown] = useState<number | null>(null);
 
   // Form state for upload
-  const [userId, setUserId] = useState("");
+  const [user, setUser] = useState<UserType | null>(null);
 
   const [complianceData, setComplianceData] = useState<any>(null);
   const [showComplianceDialog, setShowComplianceDialog] = useState(false);
@@ -69,7 +74,7 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
           video: {
             width: { ideal: 1280 },
             height: { ideal: 720 },
-            facingMode: "environment", // Use back camera if available
+            facingMode: "environment",
           },
           audio: false,
         });
@@ -153,8 +158,8 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
     if (idState === 0) {
       formData.append("file", file);
 
-      const { user_id } = await sendQR(formData);
-      setUserId(user_id);
+      const user = await sendQR(formData);
+      setUser(user);
       setIdState(1);
       setCapturedImage(null);
 
@@ -164,7 +169,7 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
     if (idState === 1) {
       formData.append("image", file);
       formData.append("room_name", location);
-      formData.append("user_id", userId);
+      formData.append("user_id", user?.user_id ?? "");
 
       // Upload to backend
       const data = await sendEPI(formData);
@@ -175,7 +180,7 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
         setHideAfterUpload(true);
         setCapturedImage(null);
         setIdState(0);
-        setUserId("");
+        setUser(null);
       }
     }
   };
@@ -231,7 +236,7 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
             {capturedImage && (
               <Image
                 alt="Captured"
-                className="max-w-full h-auto rounded-lg"
+                className="max-w-full h-auto rounded-lg scale-x-[-1]"
                 height={720}
                 src={capturedImage}
                 unoptimized
@@ -241,7 +246,7 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
             <video
               autoPlay
               className={cn(
-                "w-full h-auto rounded-lg",
+                "w-full h-auto rounded-lg scale-x-[-1]",
                 !capturedImage ? "block" : "hidden",
               )}
               muted
@@ -255,6 +260,16 @@ export const LiveCapture = ({ location }: LiveCaptureProps) => {
               <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
                 <div className="text-8xl font-bold text-white animate-pulse">
                   {countdown}
+                </div>
+              </div>
+            )}
+
+            {user !== null && (
+              <div className="absolute inset-0 h-32 p-4">
+                <div className="absolute flex p-4 bg-black/50 rounded-lg">
+                  <div className="text-3xl font-bold text-white animate-pulse">
+                    {user.name}
+                  </div>
                 </div>
               </div>
             )}
