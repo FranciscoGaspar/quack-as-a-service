@@ -401,7 +401,7 @@ export const LiveCapture = () => {
       )}
 
       {/* Equipment Compliance Dialog */}
-      <Dialog open={showComplianceDialog} onOpenChange={setShowComplianceDialog}>
+      <Dialog open={showComplianceDialog} onOpenChange={setShowComplianceDialog} >
         <DialogContent className="max-w-7xl max-h-[120vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Equipment Compliance Report</DialogTitle>
