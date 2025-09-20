@@ -2,7 +2,7 @@
 
 import { DataTable } from "@/components/dataTable/DataTable";
 import { ErrorAlert } from "@/components/ErrorAlert";
-import { columns } from "@/components/factory-entries/columns";
+import { createColumns } from "@/components/factory-entries/columns";
 import { EquipmentComplianceDisplay } from "@/components/live-capture/EquipmentComplianceDisplay";
 import { useFactoryEntries } from "@/hooks/factory-entries/useFactoryEntries";
 import type { FactoryEntries } from "@/services/factoryEntries.service";
@@ -21,7 +21,7 @@ export const FactoryEntriesComponent = () => {
   const [selectedEntry, setSelectedEntry] = useState<FactoryEntries | null>(null);
   const [showComplianceDialog, setShowComplianceDialog] = useState(false);
 
-  const handleRowClick = (entry: FactoryEntries) => {
+  const handleViewCompliance = (entry: FactoryEntries) => {
     setSelectedEntry(entry);
     setShowComplianceDialog(true);
   };
@@ -41,9 +41,8 @@ export const FactoryEntriesComponent = () => {
   return (
     <>
       <DataTable 
-        columns={columns} 
+        columns={createColumns(handleViewCompliance)} 
         data={factoryEntries} 
-        onRowClick={handleRowClick}
       />
       {selectedEntry && (
         <EquipmentComplianceDisplay

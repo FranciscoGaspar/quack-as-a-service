@@ -400,7 +400,9 @@ export const LiveCapture = () => {
       )}
 
 
-      <EquipmentComplianceDisplay complianceData={complianceData} showComplianceDialog={showComplianceDialog} setShowComplianceDialog={setShowComplianceDialog} />
+      {complianceData && (
+        <EquipmentComplianceDisplay complianceData={complianceData} showComplianceDialog={showComplianceDialog} setShowComplianceDialog={setShowComplianceDialog} />
+      )}
           
     </div>
   );

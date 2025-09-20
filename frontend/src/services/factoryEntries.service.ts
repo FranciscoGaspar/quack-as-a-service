@@ -9,7 +9,6 @@ export type FactoryEntries = {
   entered_at: string;
   created_at: string;
   is_compliant: boolean;
-  missing_equipment: string[];
 };
 
 export const GetFactoryEntries = async () => {

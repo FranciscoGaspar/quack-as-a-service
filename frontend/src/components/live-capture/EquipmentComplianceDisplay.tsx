@@ -25,7 +25,7 @@ const equipmentLabels: Record<string, string> = {
 };
 
 export const EquipmentComplianceDisplay = ({ complianceData, showComplianceDialog, setShowComplianceDialog }: EquipmentComplianceDisplayProps) => {
-  const { equipment, image_url, is_compliant, missing_equipment, room_name, entered_at } = complianceData;
+  const { equipment, image_url, is_compliant, room_name, entered_at } = complianceData;
 
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString();
@@ -33,20 +33,16 @@ export const EquipmentComplianceDisplay = ({ complianceData, showComplianceDialo
 
   return (
     <Dialog open={showComplianceDialog} onOpenChange={setShowComplianceDialog} >
-        <DialogContent className="max-w-7xl max-h-[120vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Equipment Compliance Report</DialogTitle>
+        <DialogContent className="max-w-7xl h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle>
+              <div className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />Equipment Compliance Report
+            </div></DialogTitle>
           </DialogHeader>
-          {complianceData && (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-y-auto flex-1">
       {/* Header Card */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Equipment Compliance Report
-          </CardTitle>
-        </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -133,7 +129,6 @@ export const EquipmentComplianceDisplay = ({ complianceData, showComplianceDialo
           </CardContent>
         </Card>
     </div>
-    )}
     </DialogContent>
   </Dialog>
   );
