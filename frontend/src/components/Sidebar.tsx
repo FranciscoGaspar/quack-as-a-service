@@ -71,6 +71,11 @@ const groupRoutes: GroupedRoute[] = [
         title: "Packaging Area",
         url: ROUTES.liveCapture("packaging-area"),
       },
+      {
+        icon: CameraIcon,
+        title: "Reports",
+        url: ROUTES.reports,
+      },
     ],
   },
 ];
