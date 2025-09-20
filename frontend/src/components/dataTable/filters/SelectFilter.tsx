@@ -25,7 +25,7 @@ export const SelectFilter = <TData,>({
   const hasFilter = columnDef?.getFilterValue();
   const filterText = hasFilter
     ? (columnDef?.getFilterValue() as string).toLowerCase()
-    : column.toString();
+    : column.toString().replaceAll("_", " ");
 
   const handleOnChange = (option: string) => {
     if (columnDef?.getFilterValue() === option) {
@@ -46,7 +46,7 @@ export const SelectFilter = <TData,>({
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuLabel className="px-2 py-1.5 text-xs text-muted-foreground capitalize">
-          {column.toString()}
+          {column.toString().replaceAll("_", " ")}
         </DropdownMenuLabel>
         {possibleValues.map((option) => {
           return (
@@ -56,7 +56,7 @@ export const SelectFilter = <TData,>({
               key={option}
               onCheckedChange={() => handleOnChange(option)}
             >
-              {option.toLowerCase()}
+              {option.toString().replaceAll("-", " ").toLowerCase()}
             </DropdownMenuCheckboxItem>
           );
         })}
