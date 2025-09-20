@@ -1,24 +1,29 @@
-"use client";
+'use client';
 
-import { FactoryEntriesActions } from "@/components/factory-entries/FactoryEntriesActions";
-import { formatDate } from "@/lib/date";
-import type { FactoryEntries } from "@/services/factoryEntries.service";
-import type { ColumnDef } from "@tanstack/react-table";
-import { CheckCircle2 } from "lucide-react";
+import { FactoryEntriesActions } from '@/components/factory-entries/FactoryEntriesActions';
+import { formatDate } from '@/lib/date';
+import type { FactoryEntries } from '@/services/factoryEntries.service';
+import type { ColumnDef } from '@tanstack/react-table';
+import { CheckCircle2 } from 'lucide-react';
 
-export const createColumns = (onViewCompliance: (entry: FactoryEntries) => void): ColumnDef<FactoryEntries>[] => [
+export const columns: ColumnDef<FactoryEntries>[] = [
   {
-    accessorKey: "user_id",
-    header: "User",
-    size: 50,
+    accessorKey: 'user_name',
+    header: 'User',
   },
   {
-    accessorKey: "room_name",
-    header: "Room Name",
+    accessorKey: 'room_name',
+    header: 'Room Name',
+    cell: ({ row }) => {
+      const { room_name } = row.original;
+      return (
+        <span className="capitalize">{room_name.replaceAll('-', ' ')}</span>
+      );
+    },
   },
   {
-    accessorKey: "equipment",
-    header: "Equipment",
+    accessorKey: 'equipment',
+    header: 'Equipment',
     cell: ({ row }) => {
       const { equipment } = row.original;
 
@@ -32,22 +37,23 @@ export const createColumns = (onViewCompliance: (entry: FactoryEntries) => void)
         </div>
       );
     },
+    size: 50,
   },
   {
-    accessorKey: "entered_at",
-    header: "Entered At",
+    accessorKey: 'entered_at',
+    header: 'Entered At',
     cell: ({ row }) => {
       const { entered_at } = row.original;
       return formatDate(entered_at);
     },
   },
   {
-    accessorKey: "actions",
-    header: "Actions",
+    accessorKey: 'actions',
+    header: 'Actions',
     size: 50,
     cell: ({ row }) => {
       const factoryEntry = row.original;
-      return <FactoryEntriesActions factoryEntry={factoryEntry} onViewCompliance={onViewCompliance} />;
+      return <FactoryEntriesActions factoryEntry={factoryEntry} />;
     },
   },
 ];

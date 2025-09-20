@@ -3,13 +3,14 @@ Pydantic schemas for API request/response validation.
 """
 
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
 
 
 class UserBase(BaseModel):
     """Base user schema."""
     name: str = Field(..., min_length=1, max_length=100, description="User's name")
+    qr_code: Optional[str] = Field(None, max_length=255, description="Unique QR code for the user")
 
 
 class UserCreate(UserBase):
@@ -20,6 +21,7 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     """Schema for updating a user."""
     name: Optional[str] = Field(None, min_length=1, max_length=100, description="User's name")
+    qr_code: Optional[str] = Field(None, max_length=255, description="Unique QR code for the user")
 
 
 class UserResponse(UserBase):
@@ -66,6 +68,7 @@ class PersonalEntryResponse(PersonalEntryBaseResponse):
     """Schema for personal entry response with computed fields."""
     is_compliant: bool = Field(..., description="Whether all required equipment is present")
     missing_equipment: list[str] = Field(..., description="List of missing equipment items")
+    user_name: Optional[str] = Field(None, description="Name of the user associated with this entry")
 
 
 class EquipmentUpdate(BaseModel):

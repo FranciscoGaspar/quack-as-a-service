@@ -2,11 +2,13 @@
 
 import { ROUTES } from "@/constants/routes";
 import {
-  CameraIcon,
+  ClipboardPenLineIcon,
   DoorOpenIcon,
   LayoutDashboard,
   type LucideIcon,
   Origami,
+  PackageOpenIcon,
+  ShieldIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -48,10 +50,26 @@ const groupRoutes: GroupedRoute[] = [
         title: "Factory Entries",
         url: ROUTES.factoryEntries,
       },
+    ],
+  },
+  {
+    key: "locations",
+    label: "Locations",
+    items: [
       {
-        icon: CameraIcon,
-        title: "Live Capture",
-        url: ROUTES.liveCapture,
+        icon: ShieldIcon,
+        title: "Production Floor",
+        url: ROUTES.liveCapture("production-floor"),
+      },
+      {
+        icon: ClipboardPenLineIcon,
+        title: "Assembly Line",
+        url: ROUTES.liveCapture("assembly-line"),
+      },
+      {
+        icon: PackageOpenIcon,
+        title: "Packaging Area",
+        url: ROUTES.liveCapture("packaging-area"),
       },
       {
         icon: CameraIcon,

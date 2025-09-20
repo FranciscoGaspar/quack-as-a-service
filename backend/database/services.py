@@ -9,11 +9,11 @@ class UserService:
     """Basic CRUD operations for users"""
     
     @staticmethod
-    def create(name: str) -> User:
+    def create(name: str, qr_code: str = None) -> User:
         """Create a new user"""
         session = create_session()
         try:
-            user = User(name=name)
+            user = User(name=name, qr_code=qr_code)
             session.add(user)
             session.commit()
             session.refresh(user)
@@ -31,6 +31,15 @@ class UserService:
             session.close()
     
     @staticmethod
+    def get_by_qr_code(qr_code: str) -> Optional[User]:
+        """Get user by QR code"""
+        session = create_session()
+        try:
+            return session.query(User).filter_by(qr_code=qr_code).first()
+        finally:
+            session.close()
+    
+    @staticmethod
     def get_all() -> List[User]:
         """Get all users"""
         session = create_session()
@@ -40,7 +49,7 @@ class UserService:
             session.close()
     
     @staticmethod
-    def update(user_id: int, name: str = None) -> Optional[User]:
+    def update(user_id: int, name: str = None, qr_code: str = None) -> Optional[User]:
         """Update user information"""
         session = create_session()
         try:
@@ -48,6 +57,8 @@ class UserService:
             if user:
                 if name:
                     user.name = name
+                if qr_code is not None:
+                    user.qr_code = qr_code
                 user.updated_at = datetime.now(timezone.utc)
                 session.commit()
                 session.refresh(user)

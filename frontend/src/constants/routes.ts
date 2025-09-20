@@ -2,6 +2,6 @@ export const ROUTES = {
   home: "/",
 
   factoryEntries: "/factory-entries",
-  liveCapture: "/live-capture",
+  liveCapture: (id: string) => `/${id}/live-capture`,
   reports: "/reports",
 } as const;
