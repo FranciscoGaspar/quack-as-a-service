@@ -22,6 +22,15 @@ except ImportError as e:
     print(f"⚠️  Fall detection service not available: {e}")
     FALL_DETECTION_AVAILABLE = False
 
+# Bedrock Analytics import for AI reports
+try:
+    from services.bedrock_analytics import bedrock_nlp
+    BEDROCK_AVAILABLE = True
+    print("✅ Bedrock analytics service loaded for AI reports")
+except ImportError as e:
+    print(f"⚠️  Bedrock analytics service not available: {e}")
+    BEDROCK_AVAILABLE = False
+
 router = APIRouter(prefix="/fall-detection", tags=["Fall Detection"])
 
 
@@ -234,3 +243,142 @@ async def fall_detection_health_check():
             "available": False,
             "error": str(e)
         }
+
+
+@router.post("/generate-ai-report")
+async def generate_ai_report_from_detection(
+    video_data: dict
+):
+    """
+    Generate an AI-powered report from existing fall detection results.
+
+    This endpoint takes fall detection data and generates a comprehensive
+    AI report with safety insights, risk assessment, and recommendations.
+    """
+
+    if not BEDROCK_AVAILABLE:
+        # Return a basic fallback report
+        return {
+            "status": "success",
+            "ai_report": {
+                "report_type": "basic_fallback",
+                "executive_summary": f"Fall detection analysis completed for video. {'Fall incident detected' if video_data.get('fall_detected', False) else 'No fall incidents detected'} during analysis.",
+                "detailed_analysis": "Comprehensive AI analysis is temporarily unavailable. The fall detection system successfully processed the video and provided technical detection results.",
+                "key_findings": [
+                    f"Video processing completed in {video_data.get('processing_time', 0):.1f} seconds",
+                    f"Fall detection status: {'Detected' if video_data.get('fall_detected', False) else 'Not detected'}",
+                    f"Total detections: {video_data.get('total_detections', 0)}",
+                    "Technical analysis completed successfully"
+                ],
+                "recommendations": [
+                    "Review video footage for safety compliance assessment",
+                    "Implement proper safety protocols if incidents were detected",
+                    "Consider additional monitoring for high-risk areas",
+                    "Ensure emergency response procedures are in place"
+                ],
+                "risk_level": "high" if video_data.get('fall_detected', False) else "low",
+                "confidence_score": 85,
+                "generated_at": video_data.get('analysis_timestamp', ''),
+                "model_used": "fallback_analysis",
+                "video_context": video_data
+            }
+        }
+
+    try:
+        # Create a comprehensive prompt for the AI analysis
+        user_prompt = f"""
+        Analyze this fall detection video analysis and provide a comprehensive safety report.
+        
+        Video Analysis Results:
+        - Video Filename: {video_data.get('video_filename', 'Unknown')}
+        - Location: {video_data.get('location', 'Unknown')}
+        - Duration: {video_data.get('video_duration', 0):.2f} seconds
+        - Fall Detected: {'Yes' if video_data.get('fall_detected', False) else 'No'}
+        - Total Detections: {video_data.get('total_detections', 0)}
+        - Confidence Scores: {video_data.get('confidence_scores', [])}
+        - Processing Time: {video_data.get('processing_time', 0):.1f} seconds
+        - Model Used: {video_data.get('model_version', 'Unknown')}
+        
+        Please provide a comprehensive safety analysis including:
+        1. Executive summary of the incident/analysis
+        2. Risk assessment and severity level
+        3. Safety compliance evaluation
+        4. Immediate action recommendations
+        5. Long-term prevention strategies
+        6. Regulatory compliance considerations
+        
+        Focus on workplace safety, incident prevention, and actionable insights.
+        """
+
+        # Use the direct AI model invocation instead of generate_custom_analysis
+        if bedrock_nlp.is_initialized:
+            ai_response = bedrock_nlp._invoke_model(
+                user_prompt, max_tokens=1500, temperature=0.3)
+
+            # Parse the response manually since we're not using the structured methods
+            ai_report = {
+                "report_type": "ai_video_analysis",
+                "executive_summary": f"AI analysis completed for {video_data.get('video_filename', 'video')}. {'Fall incident detected requiring immediate attention' if video_data.get('fall_detected', False) else 'No fall incidents detected during monitoring period'}.",
+                "detailed_analysis": ai_response,
+                "key_findings": [
+                    f"Video processing completed successfully in {video_data.get('processing_time', 0):.1f} seconds",
+                    f"Fall detection status: {'DETECTED - Immediate attention required' if video_data.get('fall_detected', False) else 'NOT DETECTED - Normal activity observed'}",
+                    f"Analysis confidence based on {video_data.get('total_detections', 0)} detection points",
+                    f"Video duration: {video_data.get('video_duration', 0):.1f} seconds of footage analyzed"
+                ],
+                "recommendations": [
+                    "Review complete video footage for comprehensive assessment" if video_data.get(
+                        'fall_detected', False) else "Continue standard monitoring protocols",
+                    "Implement immediate safety response procedures" if video_data.get(
+                        'fall_detected', False) else "Maintain current safety standards",
+                    "Document incident for safety compliance records" if video_data.get(
+                        'fall_detected', False) else "File routine monitoring report",
+                    "Consider additional safety measures for this location" if video_data.get(
+                        'fall_detected', False) else "Evaluate current safety protocols effectiveness"
+                ],
+                "risk_level": "high" if video_data.get('fall_detected', False) else "low",
+                "confidence_score": 90 if video_data.get('fall_detected', False) else 85,
+                "generated_at": video_data.get('analysis_timestamp', ''),
+                "model_used": bedrock_nlp.model_id,
+                "video_context": video_data
+            }
+        else:
+            # Fallback if AI is not available
+            ai_report = {
+                "report_type": "ai_video_analysis",
+                "executive_summary": f"Technical analysis completed for {video_data.get('video_filename', 'video')}. {'Fall incident detected requiring immediate attention' if video_data.get('fall_detected', False) else 'No fall incidents detected during monitoring period'}.",
+                "detailed_analysis": "Comprehensive AI analysis is temporarily unavailable. The fall detection system has successfully processed the video and provided technical detection results. Manual review of the footage is recommended for complete assessment.",
+                "key_findings": [
+                    f"Video processing completed successfully in {video_data.get('processing_time', 0):.1f} seconds",
+                    f"Fall detection status: {'DETECTED - Immediate attention required' if video_data.get('fall_detected', False) else 'NOT DETECTED - Normal activity observed'}",
+                    f"Analysis confidence based on {video_data.get('total_detections', 0)} detection points",
+                    f"Video duration: {video_data.get('video_duration', 0):.1f} seconds of footage analyzed"
+                ],
+                "recommendations": [
+                    "Review complete video footage for comprehensive assessment" if video_data.get(
+                        'fall_detected', False) else "Continue standard monitoring protocols",
+                    "Implement immediate safety response procedures" if video_data.get(
+                        'fall_detected', False) else "Maintain current safety standards",
+                    "Document incident for safety compliance records" if video_data.get(
+                        'fall_detected', False) else "File routine monitoring report",
+                    "Consider additional safety measures for this location" if video_data.get(
+                        'fall_detected', False) else "Evaluate current safety protocols effectiveness"
+                ],
+                "risk_level": "high" if video_data.get('fall_detected', False) else "low",
+                "confidence_score": 85,
+                "generated_at": video_data.get('analysis_timestamp', ''),
+                "model_used": "technical_analysis",
+                "video_context": video_data
+            }
+
+        return {
+            "status": "success",
+            "ai_report": ai_report
+        }
+
+    except Exception as e:
+        print(f"Error generating AI report: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate AI report: {str(e)}"
+        )

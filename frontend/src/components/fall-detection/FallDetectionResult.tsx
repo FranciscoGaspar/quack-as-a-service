@@ -9,7 +9,9 @@ import {
   Eye,
   Download,
   RotateCcw,
-  FileText
+  FileText,
+  Brain,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +21,8 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import type { FallDetectionResponse } from "@/services/fallDetection.service";
 import { type CustomAnalysisResponse } from "@/services/aiAnalytics.service";
+import { GenerateAIReportFromDetection, type AIVideoReport } from "@/services/fallDetection.service";
+import { AIReportDialog } from "./AIReportDialog";
 
 interface FallDetectionResultProps {
   result: FallDetectionResponse;
@@ -29,8 +33,12 @@ export const FallDetectionResult = ({ result, onNewAnalysis }: FallDetectionResu
   const [showVideoDialog, setShowVideoDialog] = useState(false);
   const [selectedVideoUrl, setSelectedVideoUrl] = useState<string>("");
   const [videoTitle, setVideoTitle] = useState<string>("");
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [aiReport, setAiReport] = useState<AIVideoReport | null>(null);
+  const [showAIReport, setShowAIReport] = useState(false);
 
   const { detection_result } = result;
+  const { toast } = useToast();
 
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString();
@@ -51,6 +59,30 @@ export const FallDetectionResult = ({ result, onNewAnalysis }: FallDetectionResu
     document.body.removeChild(link);
   };
 
+  const handleGenerateAIReport = async () => {
+    setIsGeneratingReport(true);
+    try {
+      const response = await GenerateAIReportFromDetection(result);
+      setAiReport(response.ai_report);
+      setShowAIReport(true);
+      
+      toast({
+        title: "AI Report Generated",
+        description: `Comprehensive analysis completed with ${response.ai_report.confidence_score}% confidence`,
+        variant: "default",
+      });
+    } catch (error) {
+      console.error("Error generating AI report:", error);
+      toast({
+        title: "Report generation failed",
+        description: error instanceof Error ? error.message : "An error occurred during analysis",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
+
   return (
     <>
       <Card>
@@ -64,14 +96,35 @@ export const FallDetectionResult = ({ result, onNewAnalysis }: FallDetectionResu
               )}
               Fall Detection Results
             </CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onNewAnalysis}
-            >
-              <RotateCcw className="mr-2 h-4 w-4" />
-              New Analysis
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleGenerateAIReport}
+                disabled={isGeneratingReport}
+                className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+              >
+                {isGeneratingReport ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Brain className="mr-2 h-4 w-4" />
+                    Generate AI Report
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onNewAnalysis}
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                New Analysis
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -249,6 +302,13 @@ export const FallDetectionResult = ({ result, onNewAnalysis }: FallDetectionResu
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* AI Report Dialog */}
+      <AIReportDialog
+        report={aiReport}
+        isOpen={showAIReport}
+        onClose={() => setShowAIReport(false)}
+      />
     </>
   );
 };
