@@ -25,7 +25,7 @@ export const PageHeader = ({
         </Button>
       )}
       <div className="flex flex-col">
-        <h1 className="text-3xl font-bold">{title}</h1>
+        <h1 className="text-3xl font-bold capitalize">{title}</h1>
         {description && <p className="text-muted-foreground">{description}</p>}
       </div>
     </div>
