@@ -2,11 +2,13 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import axiosClient from "@/lib/axiosClient";
 import { AlertCircle, Camera, CheckCircle, Download, RotateCcw, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { EquipmentComplianceDisplay } from "./EquipmentComplianceDisplay";
 
 const LoadingLiveCapture = () => {
   return (
@@ -46,6 +48,9 @@ export const LiveCapture = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "success" | "error">("idle");
   const [uploadMessage, setUploadMessage] = useState("");
+  const [complianceData, setComplianceData] = useState<any>(null);
+  const [showComplianceDialog, setShowComplianceDialog] = useState(false);
+  const [hideAfterUpload, setHideAfterUpload] = useState(false);
 
   // Initialize camera
   useEffect(() => {
@@ -123,6 +128,7 @@ export const LiveCapture = () => {
     const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
     setCapturedImage(imageDataUrl);
     setIsCapturing(false);
+    setHideAfterUpload(false); // Reset hide state for new capture
   };
 
   const downloadImage = () => {
@@ -167,9 +173,16 @@ export const LiveCapture = () => {
       setUploadStatus("success");
       setUploadMessage("Image uploaded successfully!");
       
-      // Reset form after successful upload
+      // Store compliance data from response and show dialog
+      if (uploadResponse.data) {
+        setComplianceData(uploadResponse.data);
+        setShowComplianceDialog(true);
+        setHideAfterUpload(true);
+      }
+      
+      // Reset form fields after successful upload (keep dialog open)
       setTimeout(() => {
-        resetCapture();
+        resetFormFields();
       }, 2000);
 
     } catch (error: any) {
@@ -189,6 +202,16 @@ export const LiveCapture = () => {
     setCapturedImage(null);
     setCountdown(null);
     setIsCapturing(false);
+    setUploadStatus("idle");
+    setUploadMessage("");
+    setComplianceData(null);
+    setShowComplianceDialog(false);
+    setHideAfterUpload(false);
+  };
+
+  const resetFormFields = () => {
+    setRoomName("");
+    setUserId("");
     setUploadStatus("idle");
     setUploadMessage("");
   };
@@ -257,7 +280,7 @@ export const LiveCapture = () => {
               {isCapturing ? "Capturing..." : "Take Photo"}
             </Button>
             
-            {capturedImage && (
+            {capturedImage && !hideAfterUpload && (
               <>
                 <Button
                   onClick={downloadImage}
@@ -284,7 +307,7 @@ export const LiveCapture = () => {
       </Card>
 
       {/* Captured Image Preview */}
-      {capturedImage && (
+      {capturedImage && !hideAfterUpload && (
         <Card>
           <CardHeader>
             <CardTitle>Captured Image</CardTitle>
@@ -302,7 +325,7 @@ export const LiveCapture = () => {
       )}
 
       {/* Upload Form */}
-      {capturedImage && (
+      {capturedImage && !hideAfterUpload && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -376,6 +399,18 @@ export const LiveCapture = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Equipment Compliance Dialog */}
+      <Dialog open={showComplianceDialog} onOpenChange={setShowComplianceDialog}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Equipment Compliance Report</DialogTitle>
+          </DialogHeader>
+          {complianceData && (
+            <EquipmentComplianceDisplay complianceData={complianceData} />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
