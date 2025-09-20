@@ -180,7 +180,7 @@ async def upload_image_and_analyze(
         
         # Define detection parameters
         text_queries = "a mask. a glove. a hairnet."
-        detection_threshold = 0.32
+        detection_threshold = 0.4
         
         # Initialize the detection model and perform analysis
         if ML_DEPENDENCIES_AVAILABLE:
