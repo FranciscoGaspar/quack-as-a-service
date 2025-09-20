@@ -2,6 +2,7 @@
 
 import { ROUTES } from "@/constants/routes";
 import {
+  CameraIcon,
   ClipboardPenLineIcon,
   DoorOpenIcon,
   LayoutDashboard,
