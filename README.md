@@ -242,16 +242,16 @@ curl -X GET "http://localhost:8000/users/1/qr-code-image \
 5. **🤖 AI Analysis**: System automatically detects PPE compliance and emotional state
 6. **✅ Approval Decision**: Automatic entry approval/denial based on safety scores
 7. **📊 Monitor Dashboard**: Real-time tracking of entries, compliance, and incidents
-8. **🚨 Incident Response**: Automatic fall detection and alert generation
+8. **🚨 Incident Report**: Fall detection with AI generated reported
 9. **📈 Analytics Review**: AI-generated insights for improving factory safety
 
 ## 👥 Team
 
-- **Guido Pereira** - AI/ML Engineering
-- **Francisco Gaspar** - Backend Development
-- **Francisco Oliveira** - Frontend Development
-- **João Ferreira** - Full-Stack Development
+- **Guido Pereira**
+- **Francisco Gaspar**
+- **Francisco Oliveira**
+- **João Ferreira**
 
 ---
 
-_Built with ❤️ for factory worker safety and AI-powered industrial monitoring_
+_Built with ❤️ for factory worker safety and AI-powered industrial monitoring 🦆_
