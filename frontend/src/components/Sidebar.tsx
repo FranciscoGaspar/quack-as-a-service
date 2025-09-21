@@ -64,7 +64,7 @@ const groupRoutes: GroupedRoute[] = [
         icon: BrainIcon,
         title: "Emotional Analysis",
         url: ROUTES.emotionalAnalysis,
-    },
+      },
       {
         icon: MessageSquareIcon,
         title: "Ask AI",

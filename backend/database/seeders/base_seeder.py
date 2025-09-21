@@ -191,48 +191,33 @@ def random_date_in_range(days_back: int = 30) -> datetime:
 
 def random_equipment_detection() -> Dict[str, bool]:
     """Generate random equipment detection results"""
-    equipment_types = [
-        'mask', 'right_glove', 'left_glove', 'hairnet', 
-        'safety_glasses', 'hard_hat', 'safety_vest', 'boots'
-    ]
+    equipment_types = ['mask', 'gloves', 'hairnet']
     
     # Generate realistic equipment detection patterns
     equipment = {}
     
     # Mask detection (70% chance)
-    equipment['mask'] = random.random() < 0.7
+    equipment['mask'] = random.random() < 0.86
     
     # Gloves detection (80% chance for both)
-    equipment['right_glove'] = random.random() < 0.8
-    equipment['left_glove'] = random.random() < 0.8
+    equipment['gloves'] = random.random() < 0.70
     
     # Hairnet detection (60% chance)
-    equipment['hairnet'] = random.random() < 0.6
+    equipment['hairnet'] = random.random() < 0.88
     
-    # Safety glasses (40% chance)
-    equipment['safety_glasses'] = random.random() < 0.4
-    
-    # Hard hat (30% chance)
-    equipment['hard_hat'] = random.random() < 0.3
-    
-    # Safety vest (50% chance)
-    equipment['safety_vest'] = random.random() < 0.5
-    
-    # Boots (90% chance - most people wear shoes)
-    equipment['boots'] = random.random() < 0.9
     
     return equipment
 
 
 def random_emotion_data() -> Dict[str, Any]:
     """Generate random emotional analysis data"""
-    emotions = ['HAPPY', 'SAD', 'ANGRY', 'SURPRISED', 'DISGUSTED', 'FEAR', 'CALM', 'CONFUSED']
+    emotions = ['HAPPY', 'SAD', 'DISGUSTED', 'FEAR', 'CALM']
     image_qualities = ['excellent', 'good', 'fair', 'poor', 'unknown']
     
     dominant_emotion = random.choice(emotions)
-    confidence = random.uniform(0.6, 0.95)
+    confidence = random.uniform(75, 100)
     image_quality = random.choice(image_qualities)
-    faces_detected = random.randint(1, 3)
+    faces_detected = 1
     
     # Generate face analysis data
     face_analyses = []
@@ -241,7 +226,7 @@ def random_emotion_data() -> Dict[str, Any]:
         for emotion in emotions:
             face_emotions.append({
                 'emotion': emotion,
-                'confidence': random.uniform(0.1, 0.9),
+                'confidence': random.uniform(75, 100),
                 'label': emotion
             })
         
@@ -269,7 +254,7 @@ def random_emotion_data() -> Dict[str, Any]:
             },
             'gender': {
                 'Value': random.choice(['Male', 'Female']),
-                'Confidence': random.uniform(0.7, 0.95)
+                'Confidence': random.uniform(75, 100)
             }
         }
         face_analyses.append(face_analysis)
