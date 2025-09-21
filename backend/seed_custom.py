@@ -445,12 +445,13 @@ def main():
     
     # Use --all value if provided
     if args.all:
-        users = rooms = entries = emotions = args.all
+        rooms = entries = emotions = args.all
     else:
-        users = args.users
         rooms = args.rooms
         entries = args.entries
         emotions = args.emotions
+    
+    users = 6
     
     # Validate counts
     if users < 0 or rooms < 0 or entries < 0 or emotions < 0:
