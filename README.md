@@ -66,7 +66,7 @@ cd quack-as-a-service
 - **YOLO** - Fall detection computer vision model
 - **Grounding DINO** - Zero-Shot vision model
 - **PIL + OpenCV** - Image processing and computer vision
-- **QR Code Generation** - Automatic user QR code creation
+- **QR Code Generation** - Automatic user QR code creation & detection
 
 ### Frontend (Next.js)
 
