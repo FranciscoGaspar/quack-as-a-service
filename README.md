@@ -17,11 +17,17 @@ Factory workers face numerous safety risks due to:
 **Quack as a Service** is an AI-powered factory safety monitoring system that provides:
 
 **Smart PPE Detection** - AI vision models automatically detect masks, gloves, hard hats, and other safety equipment
+
 **Room-Based Access Control** - Customizable equipment requirements per room with automatic approval/denial
+
 **QR Code User Identification** - Unique QR codes for seamless worker identification
+
 **Emotional State Monitoring** - AWS Rekognition analyzes worker emotional state for safety insights
+
 **Fall Detection** - YOLO-based computer vision detects falls and accidents in real-time
+
 **Real-Time Dashboard** - Comprehensive monitoring with analytics and reporting
+
 **AI-Powered Analytics** - AWS Bedrock provides intelligent insights and recommendations
 
 ## 🚀 Quick Start
@@ -51,7 +57,7 @@ cd quack-as-a-service
 - **PIL + OpenCV** - Image processing and computer vision
 - **QR Code Generation** - Automatic user QR code creation
 
-### Frontend (Next.js + React)
+### Frontend (Next.js)
 
 - **Next.js 15** - Modern React framework with App Router
 - **TypeScript** - Type-safe development
