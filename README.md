@@ -34,7 +34,7 @@ Factory workers face numerous safety risks due to:
 
 ![Demo](Live-Demo.gif)
 
-Better Quality available here -> [Watch the demo video](Lide-Demo.mp4)
+Better Quality available here -> [Lide-Demo.mp4](https://github.com/FranciscoGaspar/quack-as-a-service/blob/main/Live-Demo.mp4)
 
 ## 🚀 Quick Start
 
