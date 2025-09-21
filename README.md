@@ -60,7 +60,7 @@ cd quack-as-a-service
 ### Backend (FastAPI + Python)
 
 - **FastAPI** - Modern, fast web framework with automatic API docs
-- **PostgreSQL + SQLAlchemy** - Robust database with ORM
+- **AWS Aurora -> PostgreSQL + SQLAlchemy** - Robust database with ORM
 - **AWS Rekognition** - Emotional analysis and face detection
 - **AWS Bedrock** - AI-powered analytics and insights
 - **YOLO** - Fall detection computer vision model
