@@ -30,6 +30,10 @@ Factory workers face numerous safety risks due to:
 
 **AI-Powered Analytics** - AWS Bedrock provides intelligent insights and recommendations
 
+## 🏗️ System Architecture
+
+![System Architecture](NCCNMKdZzHCqz5pZP7pDYk.png)
+
 ## Live Demo
 
 ![Demo](Live-Demo.gif)
