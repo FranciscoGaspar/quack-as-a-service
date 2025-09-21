@@ -19,6 +19,9 @@ import shutil
 # Load environment variables
 load_dotenv()
 
+# Set PyTorch MPS fallback for unsupported operators (like torchvision::nms)
+os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
+
 # Optional ML dependencies - import only if available
 try:
     from ultralytics import YOLO
@@ -59,6 +62,37 @@ class FallDetectionService:
         except Exception as e:
             print(f"❌ Error loading YOLO model: {e}")
             raise
+
+    def _get_optimal_device(self) -> str:
+        """
+        Determine the optimal device for YOLO inference with MPS fallback support.
+        
+        Returns:
+            str: Device string ('mps', 'cuda', or 'cpu')
+        """
+        try:
+            import torch
+            
+            # Check for CUDA first (most robust for ML workloads)
+            if torch.cuda.is_available():
+                print("🚀 Using CUDA device for inference")
+                return 'cuda'
+            
+            # Check for MPS (Apple Silicon) with fallback enabled
+            if hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+                print("🍎 Using MPS device with CPU fallback for unsupported operations")
+                return 'mps'
+            
+            # Fallback to CPU
+            print("🖥️ Using CPU device for inference")
+            return 'cpu'
+            
+        except ImportError:
+            print("⚠️ PyTorch not available, defaulting to CPU")
+            return 'cpu'
+        except Exception as e:
+            print(f"⚠️ Error detecting optimal device: {e}, defaulting to CPU")
+            return 'cpu'
 
     def process_video(self, video_bytes: bytes, filename: str = None, user_id: int = None, location: str = None) -> Dict[str, Any]:
         """
@@ -177,17 +211,38 @@ class FallDetectionService:
             output_base = "./output"
             os.makedirs(output_base, exist_ok=True)
 
-            # Run inference and save the video with detection boxes
-            print(f"🔍 Running YOLO inference on video...")
-            results = self.model(
-                video_path,
-                save=True,
-                project=output_base,
-                name=f"{timestamp}",
-                stream=True,
-                device='mps' if hasattr(self.model, 'device') else 'cpu',
-                half=True
-            )
+            # Determine best available device with MPS fallback support
+            device = self._get_optimal_device()
+            print(f"🔍 Running YOLO inference on video using device: {device}...")
+            
+            # Try inference with optimal device, fallback to CPU if MPS fails
+            try:
+                results = self.model(
+                    video_path,
+                    save=True,
+                    project=output_base,
+                    name=f"{timestamp}",
+                    stream=True,
+                    device=device,
+                    half=True if device != 'cpu' else False  # Disable half precision for CPU
+                )
+            except Exception as device_error:
+                # If MPS device fails, automatically fallback to CPU
+                if device == 'mps' and ('torchvision::nms' in str(device_error) or 'MPS' in str(device_error)):
+                    print(f"⚠️ MPS inference failed: {device_error}")
+                    print("🔄 Falling back to CPU for inference...")
+                    results = self.model(
+                        video_path,
+                        save=True,
+                        project=output_base,
+                        name=f"{timestamp}",
+                        stream=True,
+                        device='cpu',
+                        half=False  # Disable half precision for CPU
+                    )
+                else:
+                    # Re-raise other errors
+                    raise device_error
 
             # Process results and count detections
             detection_count = 0

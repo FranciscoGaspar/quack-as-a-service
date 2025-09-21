@@ -4,6 +4,11 @@ FastAPI application for Quack as a Service - Room Entry Tracking API.
 Clean, organized FastAPI app with separated routes and configuration.
 """
 
+import os
+
+# Set PyTorch MPS fallback for Apple Silicon compatibility (must be set before any PyTorch imports)
+os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
+
 from api.routes import health, users, entries, rooms, fall_detection, room_configurations
 from contextlib import asynccontextmanager
 from fastapi import FastAPI

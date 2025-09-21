@@ -107,6 +107,10 @@ echo "API Documentation: http://localhost:8000/docs"
 echo "Room Configurations API: http://localhost:8000/room-configurations"
 echo ""
 
+# Set PyTorch MPS fallback for fall detection compatibility
+export PYTORCH_ENABLE_MPS_FALLBACK=1
+echo "🍎 MPS fallback enabled for Apple Silicon compatibility"
+
 # Start the API server in background
 echo "Starting API server in background..."
 python main.py &

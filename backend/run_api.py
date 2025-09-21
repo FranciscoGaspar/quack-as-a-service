@@ -4,9 +4,13 @@ Standalone script to run the FastAPI server.
 Use this to start the API separately from the main setup.
 """
 
+import os
 import uvicorn
 from main import app
 from core.config import settings
+
+# Set PyTorch MPS fallback for Apple Silicon compatibility (must be set before imports)
+os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
 
 if __name__ == "__main__":
     print("🦆 Starting Quack as a Service API...")

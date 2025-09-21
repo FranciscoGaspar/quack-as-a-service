@@ -2,6 +2,7 @@
 
 import { ROUTES } from "@/constants/routes";
 import {
+  BrainIcon,
   CameraIcon,
   ClipboardPenLineIcon,
   DoorOpenIcon,
@@ -59,6 +60,11 @@ const groupRoutes: GroupedRoute[] = [
         title: "Reports",
         url: ROUTES.reports,
       },
+      {
+        icon: BrainIcon,
+        title: "Emotional Analysis",
+        url: ROUTES.emotionalAnalysis,
+    },
       {
         icon: MessageSquareIcon,
         title: "Ask AI",
