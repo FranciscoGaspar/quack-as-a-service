@@ -60,6 +60,7 @@ cd quack-as-a-service
 - **AWS Rekognition** - Emotional analysis and face detection
 - **AWS Bedrock** - AI-powered analytics and insights
 - **YOLO** - Fall detection computer vision model
+- **Grounding DINO** - Zero-Shot vision model
 - **PIL + OpenCV** - Image processing and computer vision
 - **QR Code Generation** - Automatic user QR code creation
 
@@ -70,8 +71,6 @@ cd quack-as-a-service
 - **Tailwind CSS** - Utility-first CSS framework
 - **Radix UI** - High-quality, accessible component library
 - **TanStack Query** - Powerful data synchronization
-- **React Hook Form + Zod** - Form handling with validation
-- **Recharts** - Beautiful data visualization
 
 ## 📁 Project Structure
 
