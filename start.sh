@@ -25,7 +25,7 @@ if [ ! -f ".env" ]; then
     echo "⚙️  Creating .env file..."
     cat > .env << 'EOF'
 # Database Configuration
-DATABASE_URL=postgresql://quack:quackquack@quack.czgwue42qc30.us-east-1.rds.amazonaws.com:5432?sslmode=require
+DATABASE_URL=postgresql://quack:quackquack@localhost:5432/quack
 DB_POOL_SIZE=10
 DB_MAX_OVERFLOW=20
 DB_POOL_RECYCLE=3600
